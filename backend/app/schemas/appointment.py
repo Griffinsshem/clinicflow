@@ -1,11 +1,3 @@
-"""
-Request schemas for appointment endpoints.
-
-clinic_id is absent by design — assigned from the session. patient_id IS
-accepted, but the service verifies ownership through the scoped helper
-before any write, so a foreign ID yields 404 rather than a booking.
-"""
-
 from datetime import datetime
 
 from pydantic import Field, field_validator
@@ -26,15 +18,6 @@ class AppointmentCreateSchema(StrictModel):
     @field_validator("scheduled_at")
     @classmethod
     def require_timezone(cls, value: datetime) -> datetime:
-        """
-        Reject naive datetimes.
-
-        "2026-09-10T14:00:00" is ambiguous — two o'clock in which zone?
-        Accepting it would let Postgres apply a server default, so the
-        same request would mean different instants depending on where it
-        ran. Requiring an offset makes the client state its intent, and
-        we store UTC.
-        """
         if value.tzinfo is None or value.utcoffset() is None:
             raise ValueError(
                 "Include a timezone offset, e.g. 2026-09-10T14:00:00+03:00"
@@ -50,13 +33,6 @@ class AppointmentCreateSchema(StrictModel):
 
 
 class AppointmentUpdateSchema(StrictModel):
-    """
-    PATCH: all fields optional.
-
-    patient_id is deliberately NOT updatable. Moving an appointment
-    between patients would silently rewrite clinical history; the correct
-    action is to cancel and rebook, which leaves both records intact.
-    """
 
     scheduled_at: datetime | None = None
     appointment_type: AppointmentType | None = None

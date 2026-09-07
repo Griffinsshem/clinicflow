@@ -50,6 +50,7 @@ def create_app(config_name: str | None = None) -> Flask:
 def _register_blueprints(app: Flask) -> None:
     from app.routes.auth import bp as auth_bp
     from app.routes.appointments import bp as appointments_bp
+    from app.routes.follow_ups import bp as follow_ups_bp
     from app.routes.health import bp as health_bp
     from app.routes.patients import bp as patients_bp
 
@@ -57,6 +58,7 @@ def _register_blueprints(app: Flask) -> None:
     app.register_blueprint(auth_bp, url_prefix=API_PREFIX)
     app.register_blueprint(patients_bp, url_prefix=API_PREFIX)
     app.register_blueprint(appointments_bp, url_prefix=API_PREFIX)
+    app.register_blueprint(follow_ups_bp, url_prefix=API_PREFIX)
 
 
 def _configure_logging(app: Flask) -> None:

@@ -47,7 +47,7 @@ class FollowUp(BaseModel):
         ForeignKeyConstraint(
             ["appointment_id", "clinic_id"],
             ["appointments.id", "appointments.clinic_id"],
-            ondelete="SET NULL",
+        ondelete="SET NULL (appointment_id)",
             name="fk_follow_ups_appointment_clinic",
         ),
         Index("ix_follow_ups_clinic_status_date", "clinic_id", "status", "follow_up_date"),

@@ -150,3 +150,35 @@ def make_appointment(client):
         return response.get_json()["data"]
 
     return _make
+
+
+@pytest.fixture
+def make_follow_up(client):
+    """Create a follow-up in the clinic owning the given headers."""
+
+    def _make(session, patient_id, follow_up_date, reason="Review results", **fields):
+        response = client.post(
+            "/api/v1/follow-ups",
+            headers=session["headers"],
+            json={
+                "patient_id": patient_id,
+                "follow_up_date": follow_up_date,
+                "reason": reason,
+                **fields,
+            },
+        )
+        assert response.status_code == 201, response.get_json()
+        return response.get_json()["data"]
+
+    return _make
+
+
+@pytest.fixture
+def days_from_today():
+    """ISO date N days from today — keeps tests independent of the calendar."""
+    from datetime import date, timedelta
+
+    def _offset(days: int) -> str:
+        return (date.today() + timedelta(days=days)).isoformat()
+
+    return _offset

@@ -57,3 +57,28 @@ def parse_appointment_filters(args) -> dict:
         "date_from": _parse_datetime(args.get("date_from"), "date_from"),
         "date_to": _parse_datetime(args.get("date_to"), "date_to"),
     }
+
+
+def _parse_date(value: str | None, field: str):
+    from datetime import date as date_cls
+
+    if value is None or value == "":
+        return None
+    try:
+        return date_cls.fromisoformat(value)
+    except ValueError:
+        raise ApiError(
+            "Invalid filter value.", 422, {field: "Use YYYY-MM-DD format."}
+        ) from None
+
+
+def parse_follow_up_filters(args) -> dict:
+    from app.models.enums import FollowUpStatus
+
+    return {
+        "patient_id": _parse_int(args.get("patient_id"), "patient_id"),
+        "status": _parse_enum(args.get("status"), FollowUpStatus, "status"),
+        "overdue": args.get("overdue", "").lower() in {"1", "true", "yes"},
+        "date_from": _parse_date(args.get("date_from"), "date_from"),
+        "date_to": _parse_date(args.get("date_to"), "date_to"),
+    }

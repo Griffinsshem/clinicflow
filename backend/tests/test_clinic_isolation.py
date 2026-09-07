@@ -155,3 +155,66 @@ class TestAppointmentIsolation:
             headers=two_clinics["a"]["headers"],
         )
         assert response.status_code == 404
+
+
+class TestFollowUpIsolation:
+    def test_cannot_create_follow_up_for_another_clinics_patient(
+        self, client, two_clinics, make_patient, days_from_today
+    ):
+        victim = make_patient(two_clinics["b"])
+        response = client.post(
+            "/api/v1/follow-ups",
+            headers=two_clinics["a"]["headers"],
+            json={
+                "patient_id": victim["id"],
+                "follow_up_date": days_from_today(7),
+                "reason": "Should not work",
+            },
+        )
+        assert response.status_code == 404
+
+    def test_cannot_link_another_clinics_appointment(
+        self, client, two_clinics, make_patient, make_appointment, days_from_today
+    ):
+        """Own patient, but an appointment belonging to another clinic."""
+        own = make_patient(two_clinics["a"])
+        foreign_patient = make_patient(two_clinics["b"])
+        foreign_appointment = make_appointment(two_clinics["b"], foreign_patient["id"])
+
+        response = client.post(
+            "/api/v1/follow-ups",
+            headers=two_clinics["a"]["headers"],
+            json={
+                "patient_id": own["id"],
+                "appointment_id": foreign_appointment["id"],
+                "follow_up_date": days_from_today(7),
+                "reason": "Should not work",
+            },
+        )
+        assert response.status_code == 404
+
+    def test_grouped_view_shows_only_own_clinic(
+        self, client, two_clinics, make_patient, make_follow_up, days_from_today
+    ):
+        patient_a = make_patient(two_clinics["a"])
+        patient_b = make_patient(two_clinics["b"])
+        make_follow_up(two_clinics["a"], patient_a["id"], days_from_today(0), reason="Mine")
+        make_follow_up(two_clinics["b"], patient_b["id"], days_from_today(0), reason="Theirs")
+
+        groups = client.get(
+            "/api/v1/follow-ups?grouped=true", headers=two_clinics["a"]["headers"]
+        ).get_json()["data"]
+
+        assert [f["reason"] for f in groups["due_today"]] == ["Mine"]
+
+    def test_cannot_complete_another_clinics_follow_up(
+        self, client, two_clinics, make_patient, make_follow_up, days_from_today
+    ):
+        patient_b = make_patient(two_clinics["b"])
+        follow_up = make_follow_up(two_clinics["b"], patient_b["id"], days_from_today(0))
+
+        response = client.post(
+            f"/api/v1/follow-ups/{follow_up['id']}/complete",
+            headers=two_clinics["a"]["headers"],
+        )
+        assert response.status_code == 404
