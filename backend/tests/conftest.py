@@ -134,3 +134,19 @@ def make_patient(client):
         return response.get_json()["data"]
 
     return _make
+
+
+@pytest.fixture
+def make_appointment(client):
+    """Schedule an appointment in the clinic owning the given headers."""
+
+    def _make(session, patient_id, scheduled_at="2026-12-01T10:00:00+03:00", **fields):
+        response = client.post(
+            "/api/v1/appointments",
+            headers=session["headers"],
+            json={"patient_id": patient_id, "scheduled_at": scheduled_at, **fields},
+        )
+        assert response.status_code == 201, response.get_json()
+        return response.get_json()["data"]
+
+    return _make

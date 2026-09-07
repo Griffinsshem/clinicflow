@@ -92,3 +92,66 @@ class TestPatientRoutesRequireAuth:
         assert client.get("/api/v1/patients/1").status_code == 401
         assert client.patch("/api/v1/patients/1", json={"full_name": "X"}).status_code == 401
         assert client.delete("/api/v1/patients/1").status_code == 401
+
+
+class TestAppointmentIsolation:
+    def test_cannot_book_another_clinics_patient(
+        self, client, two_clinics, make_patient
+    ):
+        """
+        The composite FK would also reject this, but as a 500. Verifying
+        the patient through the scoped helper first makes it a clean 404
+        that reveals nothing about the ID.
+        """
+        victim = make_patient(two_clinics["b"], full_name="Bob OfClinicB")
+
+        response = client.post(
+            "/api/v1/appointments",
+            headers=two_clinics["a"]["headers"],
+            json={
+                "patient_id": victim["id"],
+                "scheduled_at": "2026-12-01T10:00:00+03:00",
+            },
+        )
+        assert response.status_code == 404
+
+    def test_list_shows_only_own_clinic_appointments(
+        self, client, two_clinics, make_patient, make_appointment
+    ):
+        patient_a = make_patient(two_clinics["a"], full_name="Alice OfClinicA")
+        patient_b = make_patient(two_clinics["b"], full_name="Bob OfClinicB")
+        make_appointment(two_clinics["a"], patient_a["id"])
+        make_appointment(two_clinics["b"], patient_b["id"])
+
+        response = client.get(
+            "/api/v1/appointments", headers=two_clinics["a"]["headers"]
+        )
+        data = response.get_json()["data"]
+        assert len(data) == 1
+        assert data[0]["patient"]["full_name"] == "Alice OfClinicA"
+
+    def test_cannot_read_update_or_delete_other_clinic_appointment(
+        self, client, two_clinics, make_patient, make_appointment
+    ):
+        patient_b = make_patient(two_clinics["b"])
+        appointment = make_appointment(two_clinics["b"], patient_b["id"])
+        headers = two_clinics["a"]["headers"]
+        url = f"/api/v1/appointments/{appointment['id']}"
+
+        assert client.get(url, headers=headers).status_code == 404
+        assert client.patch(url, headers=headers, json={"status": "cancelled"}).status_code == 404
+        assert client.delete(url, headers=headers).status_code == 404
+
+        # Untouched from its owner's perspective.
+        owner_view = client.get(url, headers=two_clinics["b"]["headers"])
+        assert owner_view.get_json()["data"]["status"] == "scheduled"
+
+    def test_cannot_list_another_clinics_patient_history(
+        self, client, two_clinics, make_patient
+    ):
+        victim = make_patient(two_clinics["b"])
+        response = client.get(
+            f"/api/v1/patients/{victim['id']}/appointments",
+            headers=two_clinics["a"]["headers"],
+        )
+        assert response.status_code == 404
