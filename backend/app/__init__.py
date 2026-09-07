@@ -50,6 +50,7 @@ def create_app(config_name: str | None = None) -> Flask:
 def _register_blueprints(app: Flask) -> None:
     from app.routes.auth import bp as auth_bp
     from app.routes.appointments import bp as appointments_bp
+    from app.routes.dashboard import bp as dashboard_bp
     from app.routes.follow_ups import bp as follow_ups_bp
     from app.routes.health import bp as health_bp
     from app.routes.patients import bp as patients_bp
@@ -59,13 +60,10 @@ def _register_blueprints(app: Flask) -> None:
     app.register_blueprint(patients_bp, url_prefix=API_PREFIX)
     app.register_blueprint(appointments_bp, url_prefix=API_PREFIX)
     app.register_blueprint(follow_ups_bp, url_prefix=API_PREFIX)
+    app.register_blueprint(dashboard_bp, url_prefix=API_PREFIX)
 
 
 def _configure_logging(app: Flask) -> None:
-    """
-    Log to stdout so Render captures it. Never log passwords, tokens,
-    or patient identifiers — see the logging notes in the README.
-    """
     handler = logging.StreamHandler(sys.stdout)
     handler.setFormatter(
         logging.Formatter("[%(asctime)s] %(levelname)s in %(module)s: %(message)s")
@@ -75,10 +73,6 @@ def _configure_logging(app: Flask) -> None:
 
 
 def _register_error_handlers(app: Flask) -> None:
-    """
-    Every error path exits through the envelope. Internal detail goes to
-    the logs; the client gets a safe, human-readable message.
-    """
 
     @app.errorhandler(ApiError)
     def handle_api_error(exc: ApiError):
