@@ -33,6 +33,8 @@ def create_app(config_name: str | None = None) -> Flask:
     if app.config["BEHIND_PROXY"]:
         app.wsgi_app = ProxyFix(app.wsgi_app, x_for=1, x_proto=1)
 
+    from app import models  # noqa: F401
+
     db.init_app(app)
     migrate.init_app(app, db)
     jwt.init_app(app)
