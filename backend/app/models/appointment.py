@@ -41,7 +41,12 @@ class Appointment(BaseModel):
     notes: Mapped[str | None] = mapped_column(String(1000), nullable=True)
 
     patient: Mapped["Patient"] = relationship(back_populates="appointments")
-    follow_ups: Mapped[list["FollowUp"]] = relationship(back_populates="appointment")
+    # viewonly: see the note on FollowUp.appointment. Deleting an
+    # appointment nulls follow_ups.appointment_id via the database's
+    # ON DELETE SET NULL, preserving the outstanding follow-up.
+    follow_ups: Mapped[list["FollowUp"]] = relationship(
+        back_populates="appointment", viewonly=True
+    )
 
     __table_args__ = (
         ForeignKeyConstraint(

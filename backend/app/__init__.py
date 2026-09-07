@@ -33,7 +33,7 @@ def create_app(config_name: str | None = None) -> Flask:
     if app.config["BEHIND_PROXY"]:
         app.wsgi_app = ProxyFix(app.wsgi_app, x_for=1, x_proto=1)
 
-    from app import models  # noqa: F401
+    from app import models  
 
     db.init_app(app)
     migrate.init_app(app, db)
@@ -56,9 +56,11 @@ def create_app(config_name: str | None = None) -> Flask:
 
 
 def _register_blueprints(app: Flask) -> None:
+    from app.routes.auth import bp as auth_bp
     from app.routes.health import bp as health_bp
 
     app.register_blueprint(health_bp, url_prefix=API_PREFIX)
+    app.register_blueprint(auth_bp, url_prefix=API_PREFIX)
 
 
 def _configure_logging(app: Flask) -> None:

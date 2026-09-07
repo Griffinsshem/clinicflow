@@ -34,8 +34,11 @@ class Patient(BaseModel):
     appointments: Mapped[list["Appointment"]] = relationship(
         back_populates="patient", cascade="all, delete-orphan", passive_deletes=True
     )
+    # viewonly: see the note on FollowUp.patient. Deletion is handled by
+    # the database's ON DELETE CASCADE (passive_deletes on the appointments
+    # relationship above), not by the ORM walking this collection.
     follow_ups: Mapped[list["FollowUp"]] = relationship(
-        back_populates="patient", cascade="all, delete-orphan", passive_deletes=True
+        back_populates="patient", viewonly=True
     )
 
     __table_args__ = (

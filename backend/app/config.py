@@ -62,6 +62,9 @@ class TestingConfig(BaseConfig):
     SQLALCHEMY_DATABASE_URI = os.getenv("TEST_DATABASE_URL", "")
     JWT_ACCESS_TOKEN_EXPIRES = timedelta(minutes=15)
     CORS_ORIGINS = ["http://localhost:3000"]
+    # Disabled so tests can hammer auth endpoints. The limits themselves
+    # are asserted in a dedicated test that re-enables them.
+    RATELIMIT_ENABLED = False
 
 
 class ProductionConfig(BaseConfig):

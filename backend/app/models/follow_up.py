@@ -30,8 +30,12 @@ class FollowUp(BaseModel):
         FollowUpStatus, nullable=False, default=FollowUpStatus.UPCOMING
     )
 
-    patient: Mapped["Patient"] = relationship(back_populates="follow_ups")
-    appointment: Mapped["Appointment | None"] = relationship(back_populates="follow_ups")
+    patient: Mapped["Patient"] = relationship(
+        back_populates="follow_ups", viewonly=True
+    )
+    appointment: Mapped["Appointment | None"] = relationship(
+        back_populates="follow_ups", viewonly=True
+    )
 
     __table_args__ = (
         ForeignKeyConstraint(
