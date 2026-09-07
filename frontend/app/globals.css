@@ -1,26 +1,92 @@
 @import "tailwindcss";
 
-:root {
-  --background: #ffffff;
-  --foreground: #171717;
+
+@theme {
+  --color-ground: #f6f8f6;
+  --color-surface: #ffffff;
+  --color-ink: #12211c;
+  --color-ink-muted: #5a6b64;
+  --color-ink-subtle: #8a9993;
+
+  /* Borders do the work shadows would otherwise do. Two weights: hairline
+     for table rows, line for panel edges. */
+  --color-hairline: #e4e9e6;
+  --color-line: #d3dbd7;
+
+  --color-accent: #0f5c4c;
+  --color-accent-hover: #0b4739;
+  --color-accent-soft: #e8f1ee;
+
+  /* Semantic. Muted rather than saturated: a clinic list showing six
+     overdue follow-ups in fire-engine red is unreadable panic. */
+  --color-ochre: #9a6b12;
+  --color-ochre-soft: #fdf4e3;
+  --color-brick: #a8412f;
+  --color-brick-soft: #fbeeeb;
+
+  /* --- Type ---------------------------------------------------------
+   * One family. Hierarchy comes from weight and size, never from a
+   * second typeface or from colour.
+   */
+  --font-sans: var(--font-public-sans), ui-sans-serif, system-ui, sans-serif;
+
+  --text-xs: 0.75rem;
+  --text-sm: 0.8125rem;
+  --text-base: 0.875rem;   /* 14px: dense operational UI, not marketing */
+  --text-lg: 1rem;
+  --text-xl: 1.125rem;
+  --text-2xl: 1.375rem;
+  --text-3xl: 1.75rem;
+
+  /* --- Shape --------------------------------------------------------
+   * Small and consistent. Pills and 16px radii read as consumer app;
+   * this is a record system.
+   */
+  --radius-sm: 4px;
+  --radius-md: 6px;
+  --radius-lg: 8px;
+
+  /* Elevation exists only for things that float above the page. */
+  --shadow-overlay: 0 8px 24px -6px rgb(18 33 28 / 0.12),
+                    0 2px 6px -2px rgb(18 33 28 / 0.08);
 }
 
-@theme inline {
-  --color-background: var(--background);
-  --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
-}
-
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
+@layer base {
+  html {
+    -webkit-text-size-adjust: 100%;
   }
-}
 
-body {
-  background: var(--background);
-  color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+  body {
+    background: var(--color-ground);
+    color: var(--color-ink);
+    font-family: var(--font-sans);
+    font-size: var(--text-base);
+    line-height: 1.5;
+    /* Optical sizing and kerning on: this text is read all day. */
+    text-rendering: optimizeLegibility;
+    -webkit-font-smoothing: antialiased;
+  }
+
+  /* Times and counts sit in columns. Lining tabular figures keep them
+     aligned without a monospace face. */
+  table, .tabular {
+    font-variant-numeric: tabular-nums;
+  }
+
+  /* Visible keyboard focus everywhere — a floor, not a feature. */
+  :focus-visible {
+    outline: 2px solid var(--color-accent);
+    outline-offset: 2px;
+    border-radius: var(--radius-sm);
+  }
+
+  /* Respect reduced-motion. Near-zero rather than zero so transition
+     callbacks still fire. */
+  @media (prefers-reduced-motion: reduce) {
+    *, *::before, *::after {
+      animation-duration: 0.01ms !important;
+      animation-iteration-count: 1 !important;
+      transition-duration: 0.01ms !important;
+    }
+  }
 }
