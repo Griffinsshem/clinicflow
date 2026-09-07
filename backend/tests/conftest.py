@@ -105,3 +105,32 @@ def register_clinic(client):
         }
 
     return _register
+
+
+@pytest.fixture
+def two_clinics(register_clinic):
+    """
+    Two fully separate clinics, each with an admin and one patient.
+
+    The backbone of every isolation test: anything clinic A can reach
+    that belongs to clinic B is a security failure.
+    """
+    a = register_clinic(clinic_name="Clinic A", email="a@clinic-a.test")
+    b = register_clinic(clinic_name="Clinic B", email="b@clinic-b.test")
+    return {"a": a, "b": b}
+
+
+@pytest.fixture
+def make_patient(client):
+    """Create a patient in the clinic owning the given auth headers."""
+
+    def _make(session, full_name="Jane Doe", **fields):
+        response = client.post(
+            "/api/v1/patients",
+            headers=session["headers"],
+            json={"full_name": full_name, **fields},
+        )
+        assert response.status_code == 201, response.get_json()
+        return response.get_json()["data"]
+
+    return _make
