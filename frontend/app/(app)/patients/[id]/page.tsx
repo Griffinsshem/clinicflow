@@ -195,7 +195,7 @@ export default function PatientDetailPage({
             ) : past.length === 0 ? (
               <EmptyState
                 title="No past visits"
-                description="Completed appointments will appear here."
+                description="Completed, cancelled, and missed appointments appear here."
               />
             ) : (
               <ul className="divide-y divide-hairline">
