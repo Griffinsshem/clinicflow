@@ -5,7 +5,7 @@ const SESSION_COOKIE = "clinicflow_session";
 
 const AUTH_ROUTES = ["/login", "/register"];
 
-export function middleware(request: NextRequest) {
+export function proxy(request: NextRequest) {
   const { pathname } = request.nextUrl;
   const hasSession = request.cookies.has(SESSION_COOKIE);
 
