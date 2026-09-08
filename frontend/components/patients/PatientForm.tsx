@@ -71,7 +71,6 @@ export function PatientForm({ patient, onSaved, onCancel }: PatientFormProps) {
             required
             minLength={2}
             maxLength={120}
-            autoFocus
           />
         )}
       </Field>

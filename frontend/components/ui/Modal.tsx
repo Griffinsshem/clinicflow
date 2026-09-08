@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef } from "react";
+import { useEffect, useLayoutEffect, useRef } from "react";
 import { createPortal } from "react-dom";
 import { X } from "lucide-react";
 
@@ -19,13 +19,21 @@ export function Modal({ open, onClose, title, children }: ModalProps) {
   const panelRef = useRef<HTMLDivElement>(null);
   const restoreFocusTo = useRef<HTMLElement | null>(null);
 
+  useLayoutEffect(() => {
+    if (open) {
+      restoreFocusTo.current = document.activeElement as HTMLElement | null;
+    }
+  }, [open]);
+
   useEffect(() => {
     if (!open) return;
 
-    restoreFocusTo.current = document.activeElement as HTMLElement | null;
-
     const panel = panelRef.current;
-    panel?.querySelector<HTMLElement>(FOCUSABLE)?.focus();
+    if (!panel) return;
+
+    const frame = requestAnimationFrame(() => {
+      panel.querySelector<HTMLElement>(FOCUSABLE)?.focus();
+    });
 
     function onKeyDown(event: KeyboardEvent) {
       if (event.key === "Escape") {
@@ -56,9 +64,12 @@ export function Modal({ open, onClose, title, children }: ModalProps) {
     document.body.style.overflow = "hidden";
 
     return () => {
+      cancelAnimationFrame(frame);
       document.removeEventListener("keydown", onKeyDown);
       document.body.style.overflow = previousOverflow;
-      restoreFocusTo.current?.focus();
+
+      const trigger = restoreFocusTo.current;
+      if (trigger?.isConnected) trigger.focus();
     };
   }, [open, onClose]);
 
@@ -91,7 +102,7 @@ export function Modal({ open, onClose, title, children }: ModalProps) {
           </button>
         </header>
 
-        <div className="p-4">{children}</div>
+        <div className="p-4 pb-6 sm:pb-4">{children}</div>
       </div>
     </div>,
     document.body,

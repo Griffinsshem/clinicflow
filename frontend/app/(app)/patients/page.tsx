@@ -2,6 +2,8 @@
 
 import { useRouter, useSearchParams } from "next/navigation";
 import { Suspense, useCallback, useMemo, useState } from "react";
+import { Plus } from "lucide-react";
+
 import { PatientForm } from "@/components/patients/PatientForm";
 import { PatientList } from "@/components/patients/PatientList";
 import { Button } from "@/components/ui/Button";
@@ -72,16 +74,7 @@ function PatientsView() {
         </div>
 
         <Button variant="primary" onClick={() => setAdding(true)}>
-          <svg
-            className="h-4 w-4"
-            viewBox="0 0 24 24"
-            fill="none"
-            stroke="currentColor"
-            strokeWidth="2"
-            aria-hidden="true"
-          >
-            <path d="M12 5v14M5 12h14" />
-          </svg>
+          <Plus className="h-4 w-4" aria-hidden="true" />
           Add patient
         </Button>
       </header>
