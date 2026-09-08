@@ -1,6 +1,7 @@
 import { redirect } from "next/navigation";
 
 import { Nav } from "@/components/layout/Nav";
+import { ToastProvider } from "@/providers/ToastProvider";
 import { UserMenu } from "@/components/layout/UserMenu";
 import { callBackend } from "@/lib/backend";
 import { getSessionToken } from "@/lib/session";
@@ -20,6 +21,7 @@ export default async function AppLayout({
   const session = body.data;
 
   return (
+    <ToastProvider>
     <div className="flex min-h-dvh">
       <Nav />
 
@@ -38,5 +40,6 @@ export default async function AppLayout({
         </main>
       </div>
     </div>
+    </ToastProvider>
   );
 }
