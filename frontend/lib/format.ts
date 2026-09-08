@@ -44,3 +44,46 @@ export function humanise(value: string): string {
   const spaced = value.replace(/_/g, " ");
   return spaced.charAt(0).toUpperCase() + spaced.slice(1);
 }
+
+const DAY_HEADING = new Intl.DateTimeFormat(undefined, {
+  weekday: "short",
+  day: "numeric",
+  month: "short",
+});
+
+export function dayHeading(iso: string, today = new Date()): string {
+  const date = new Date(iso);
+
+  const startOfDay = (d: Date) =>
+    new Date(d.getFullYear(), d.getMonth(), d.getDate()).getTime();
+
+  const days = Math.round(
+    (startOfDay(date) - startOfDay(today)) / 86_400_000,
+  );
+
+  if (days === 0) return "Today";
+  if (days === 1) return "Tomorrow";
+  if (days === -1) return "Yesterday";
+  return DAY_HEADING.format(date);
+}
+
+export function groupByDay<T>(
+  items: T[],
+  getDate: (item: T) => string,
+): { key: string; label: string; items: T[] }[] {
+  const groups = new Map<string, T[]>();
+
+  for (const item of items) {
+    const date = new Date(getDate(item));
+    const key = `${date.getFullYear()}-${date.getMonth()}-${date.getDate()}`;
+    const bucket = groups.get(key);
+    if (bucket) bucket.push(item);
+    else groups.set(key, [item]);
+  }
+
+  return Array.from(groups.entries()).map(([key, groupItems]) => ({
+    key,
+    label: dayHeading(getDate(groupItems[0])),
+    items: groupItems,
+  }));
+}
