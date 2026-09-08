@@ -17,6 +17,7 @@ interface ModalProps {
 
 export function Modal({ open, onClose, title, children }: ModalProps) {
   const panelRef = useRef<HTMLDivElement>(null);
+  const contentRef = useRef<HTMLDivElement>(null);
   const restoreFocusTo = useRef<HTMLElement | null>(null);
 
   useLayoutEffect(() => {
@@ -32,7 +33,9 @@ export function Modal({ open, onClose, title, children }: ModalProps) {
     if (!panel) return;
 
     const frame = requestAnimationFrame(() => {
-      panel.querySelector<HTMLElement>(FOCUSABLE)?.focus();
+      const target =
+        contentRef.current?.querySelector<HTMLElement>(FOCUSABLE) ?? panel;
+      target.focus();
     });
 
     function onKeyDown(event: KeyboardEvent) {
@@ -88,7 +91,8 @@ export function Modal({ open, onClose, title, children }: ModalProps) {
         role="dialog"
         aria-modal="true"
         aria-label={title}
-        className="relative w-full max-w-lg max-h-[90dvh] overflow-y-auto rounded-t-lg bg-surface shadow-[--shadow-overlay] sm:rounded-lg"
+        tabIndex={-1}
+        className="relative w-full max-w-lg max-h-[90dvh] overflow-y-auto rounded-t-lg bg-surface shadow-[--shadow-overlay] sm:rounded-lg focus:outline-none"
       >
         <header className="sticky top-0 flex items-center justify-between gap-4 border-b border-hairline bg-surface px-4 py-3">
           <h2 className="text-base font-semibold text-ink">{title}</h2>
@@ -102,7 +106,9 @@ export function Modal({ open, onClose, title, children }: ModalProps) {
           </button>
         </header>
 
-        <div className="p-4 pb-6 sm:pb-4">{children}</div>
+        <div ref={contentRef} className="p-4 pb-6 sm:pb-4">
+          {children}
+        </div>
       </div>
     </div>,
     document.body,
