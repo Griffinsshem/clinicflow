@@ -10,7 +10,7 @@ export function Panel({
   return (
     <section
       className={cx(
-        "bg-surface border border-hairline rounded-[--radius-lg]",
+        "bg-surface border border-hairline rounded-lg",
         className,
       )}
     >

@@ -5,9 +5,9 @@ export function SkeletonRows({ rows = 5 }: { rows?: number }) {
     <div aria-hidden="true" className="divide-y divide-hairline">
       {Array.from({ length: rows }).map((_, index) => (
         <div key={index} className="flex items-center gap-4 px-4 py-3">
-          <div className="h-4 w-40 rounded-[--radius-sm] bg-ground animate-pulse" />
-          <div className="h-4 w-24 rounded-[--radius-sm] bg-ground animate-pulse" />
-          <div className="ml-auto h-4 w-16 rounded-[--radius-sm] bg-ground animate-pulse" />
+          <div className="h-4 w-40 rounded-sm bg-ground animate-pulse" />
+          <div className="h-4 w-24 rounded-sm bg-ground animate-pulse" />
+          <div className="ml-auto h-4 w-16 rounded-sm bg-ground animate-pulse" />
         </div>
       ))}
     </div>

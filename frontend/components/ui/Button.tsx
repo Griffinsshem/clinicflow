@@ -5,7 +5,7 @@ type Variant = "primary" | "secondary" | "danger";
 type Size = "sm" | "md";
 
 const BASE =
-  "inline-flex items-center justify-center gap-2 rounded-[--radius-md] " +
+  "inline-flex items-center justify-center gap-2 rounded-md " +
   "font-medium transition-colors duration-150 " +
   "disabled:opacity-50 disabled:pointer-events-none";
 

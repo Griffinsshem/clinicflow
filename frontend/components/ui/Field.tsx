@@ -6,7 +6,7 @@ import { cx } from "@/lib/utils";
 
 
 const CONTROL =
-  "w-full h-9 px-3 rounded-[--radius-md] bg-surface text-ink " +
+  "w-full h-9 px-3 rounded-md bg-surface text-ink " +
   "border border-line placeholder:text-ink-subtle " +
   "transition-colors duration-150 " +
   "focus:border-accent focus:outline-none focus:ring-1 focus:ring-accent " +

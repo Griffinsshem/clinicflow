@@ -56,7 +56,7 @@ export function LoginForm() {
       {state.message && (
         <div
           role="alert"
-          className="rounded-[--radius-md] border border-brick/25 bg-brick-soft px-3 py-2 text-sm text-brick"
+          className="rounded-md border border-brick/25 bg-brick-soft px-3 py-2 text-sm text-brick"
         >
           {state.message}
         </div>

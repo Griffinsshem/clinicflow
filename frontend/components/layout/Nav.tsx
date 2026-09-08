@@ -45,7 +45,7 @@ export function Nav() {
                 href={href}
                 aria-current={isActive(href) ? "page" : undefined}
                 className={cx(
-                  "flex items-center gap-2.5 rounded-[--radius-md] px-3 py-2 " +
+                  "flex items-center gap-2.5 rounded-md px-3 py-2 " +
                     "text-sm transition-colors duration-150",
                   isActive(href)
                     ? "bg-accent-soft text-accent font-medium"
