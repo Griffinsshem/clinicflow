@@ -6,6 +6,22 @@ def _iso_in(hours: float, tz_offset_hours: int = 3) -> str:
     return (datetime.now(tz) + timedelta(hours=hours)).isoformat()
 
 
+def _iso_today_at(hour: int, tz_offset_hours: int = 3) -> str:
+    """
+    A fixed clock time on today's date in the given zone.
+
+    Offsetting from "now" makes a test time-of-day dependent: run at
+    20:30 with a +5h offset and the appointment lands tomorrow, so a
+    test asserting "two appointments today" fails for reasons that have
+    nothing to do with the code. Pinning the hour keeps the assertion
+    about behaviour rather than about when the suite happened to run.
+    """
+    tz = timezone(timedelta(hours=tz_offset_hours))
+    return datetime.now(tz).replace(
+        hour=hour, minute=0, second=0, microsecond=0
+    ).isoformat()
+
+
 class TestDashboardMetrics:
     def test_empty_clinic_returns_zeros(self, client, register_clinic):
         """Empty states must render, not error."""
@@ -22,7 +38,7 @@ class TestDashboardMetrics:
     ):
         session = register_clinic()
         patient = make_patient(session)
-        make_appointment(session, patient["id"], _iso_in(2))       
+        make_appointment(session, patient["id"], _iso_today_at(11))       
         make_appointment(session, patient["id"], _iso_in(24 * 5))  
 
         response = client.get(
@@ -40,7 +56,7 @@ class TestDashboardMetrics:
         """A cancelled visit must not inflate the day's workload."""
         session = register_clinic()
         patient = make_patient(session)
-        appointment = make_appointment(session, patient["id"], _iso_in(2))
+        appointment = make_appointment(session, patient["id"], _iso_today_at(11))
 
         client.patch(
             f"/api/v1/appointments/{appointment['id']}",
@@ -78,8 +94,8 @@ class TestDashboardMetrics:
     ):
         session = register_clinic()
         patient = make_patient(session)
-        make_appointment(session, patient["id"], _iso_in(5))
-        make_appointment(session, patient["id"], _iso_in(1))
+        make_appointment(session, patient["id"], _iso_today_at(14))
+        make_appointment(session, patient["id"], _iso_today_at(9))
 
         schedule = client.get(
             "/api/v1/dashboard?tz_offset=180", headers=session["headers"]
@@ -128,8 +144,8 @@ class TestDashboardIsolation:
     ):
         patient_a = make_patient(two_clinics["a"], full_name="Alice OfClinicA")
         patient_b = make_patient(two_clinics["b"], full_name="Bob OfClinicB")
-        make_appointment(two_clinics["a"], patient_a["id"], _iso_in(2))
-        make_appointment(two_clinics["b"], patient_b["id"], _iso_in(2))
+        make_appointment(two_clinics["a"], patient_a["id"], _iso_today_at(11))
+        make_appointment(two_clinics["b"], patient_b["id"], _iso_today_at(11))
 
         schedule = client.get(
             "/api/v1/dashboard?tz_offset=180", headers=two_clinics["a"]["headers"]
