@@ -15,6 +15,25 @@ load_dotenv()
 
 _PLACEHOLDERS = {"", "change-me", "changeme", "secret", "dev"}
 
+def _normalise_database_url(url: str) -> str:
+    """
+    Force the psycopg3 driver onto the connection URL.
+
+    Managed Postgres providers hand out URLs beginning "postgres://",
+    a scheme SQLAlchemy 2.x dropped support for, and even
+    "postgresql://" resolves to psycopg2 — which is not installed. Both
+    are rewritten to "postgresql+psycopg://" so the same code runs
+    locally and in production without the deploy failing at boot with a
+    driver error.
+    """
+    if url.startswith("postgres://"):
+        return url.replace("postgres://", "postgresql+psycopg://", 1)
+    if url.startswith("postgresql://"):
+        return url.replace("postgresql://", "postgresql+psycopg://", 1)
+    return url
+
+
+
 
 def _split_origins(raw: str) -> list[str]:
     """CORS_ORIGINS is a comma-separated string; empty entries dropped."""
@@ -28,7 +47,7 @@ class BaseConfig:
 
     SECRET_KEY = os.getenv("SECRET_KEY", "dev-only-secret-key")
 
-    SQLALCHEMY_DATABASE_URI = os.getenv("DATABASE_URL", "")
+    SQLALCHEMY_DATABASE_URI = _normalise_database_url(os.getenv("DATABASE_URL", ""))
     SQLALCHEMY_TRACK_MODIFICATIONS = False
     SQLALCHEMY_ENGINE_OPTIONS = {
         "pool_pre_ping": True,
@@ -59,11 +78,9 @@ class DevelopmentConfig(BaseConfig):
 class TestingConfig(BaseConfig):
     ENV_NAME = "testing"
     TESTING = True
-    SQLALCHEMY_DATABASE_URI = os.getenv("TEST_DATABASE_URL", "")
+    SQLALCHEMY_DATABASE_URI = _normalise_database_url(os.getenv("TEST_DATABASE_URL", ""))
     JWT_ACCESS_TOKEN_EXPIRES = timedelta(minutes=15)
     CORS_ORIGINS = ["http://localhost:3000"]
-    # Disabled so tests can hammer auth endpoints. The limits themselves
-    # are asserted in a dedicated test that re-enables them.
     RATELIMIT_ENABLED = False
 
 
