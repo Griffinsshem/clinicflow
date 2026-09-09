@@ -14,7 +14,7 @@ export function TodaySchedule({ appointments }: { appointments: Appointment[] })
         action={
           <Link
             href="/appointments"
-            className="text-sm font-medium text-accent hover:underline"
+            className="text-sm font-bold text-accent hover:underline"
           >
             All appointments
           </Link>
