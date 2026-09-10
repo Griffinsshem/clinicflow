@@ -16,9 +16,25 @@ services:
 
     buildCommand: pip install -r requirements.txt
 
-    preDeployCommand: flask db upgrade
 
-    startCommand: gunicorn --config gunicorn.conf.py "run:app"
+    # Migrations run here, chained ahead of the server.
+    #
+    # preDeployCommand would be the better home for this — it runs once
+    # per deploy, independent of instance count — but Render reserves it
+    # for paid tiers. This is the correct free-tier equivalent, not a
+    # workaround: startCommand is a single shell invocation, so
+    # `flask db upgrade` completes before gunicorn execs, and the workers
+    # it forks inherit an already-migrated database. No worker races
+    # another for Alembic's version lock.
+    #
+    # The `&&` matters: if a migration fails, gunicorn never starts and
+    # the deploy fails loudly rather than serving traffic against a
+    # half-migrated schema.
+    #
+    # This holds because the free tier runs exactly one instance. On a
+    # paid plan with several instances, move this back to
+    # preDeployCommand.
+    startCommand: flask db upgrade && gunicorn --config gunicorn.conf.py "run:app"
 
     healthCheckPath: /api/v1/health
 
