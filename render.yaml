@@ -4,6 +4,10 @@ databases:
     databaseName: clinicflow
     user: clinicflow
     plan: free
+    # Stated explicitly. Without it Render uses the workspace
+    # default, which is how the service and database ended up in
+    # different regions on the first attempt.
+    region: oregon
     postgresMajorVersion: "16"
 
 services:
@@ -11,7 +15,14 @@ services:
     name: clinicflow-api
     runtime: python
     plan: free
-    region: frankfurt
+    # MUST match the database's region.
+    #
+    # Render's `fromDatabase` injects the INTERNAL connection string,
+    # whose hostname (dpg-...-a) resolves only inside that region's
+    # private network. A service in another region fails with a DNS
+    # error rather than an auth or firewall one, which is what makes the
+    # cause non-obvious from the traceback.
+    region: oregon
     rootDir: backend
 
     buildCommand: pip install -r requirements.txt
