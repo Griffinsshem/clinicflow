@@ -9,6 +9,7 @@ import {
   Users,
 } from "lucide-react";
 
+import { Logo } from "@/components/Logo";
 import { cx } from "@/lib/utils";
 
 
@@ -33,8 +34,8 @@ export function Nav() {
         className="hidden md:flex md:w-56 md:flex-col md:shrink-0 border-r border-hairline bg-surface"
       >
         <div className="px-5 h-14 flex items-center border-b border-hairline">
-          <Link href="/dashboard" className="font-semibold tracking-tight text-ink">
-            ClinicFlow
+          <Link href="/dashboard">
+            <Logo />
           </Link>
         </div>
 

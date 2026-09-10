@@ -1,5 +1,6 @@
 import Link from "next/link";
 
+import { Logo, LogoMark } from "@/components/Logo";
 import { DemoButton } from "@/components/landing/DemoButton";
 import { HeroPanel } from "@/components/landing/HeroPanel";
 
@@ -27,9 +28,9 @@ export default function LandingPage() {
 
 function SiteHeader() {
   return (
-    <header className="border-b border-hairline bg-surface">
+    <header className="sticky top-0 z-30 border-b border-hairline bg-surface/95 backdrop-blur-sm">
       <div className="mx-auto flex h-14 max-w-5xl items-center justify-between px-4 md:px-6">
-        <span className="font-semibold tracking-tight text-ink">ClinicFlow</span>
+        <Logo />
 
         <nav className="flex items-center gap-4">
           <Link
@@ -42,7 +43,7 @@ function SiteHeader() {
             href="/register"
             className="inline-flex h-8 items-center rounded-md bg-accent px-3 text-sm font-medium text-white transition-colors hover:bg-accent-hover"
           >
-            Get started
+            Create a clinic
           </Link>
         </nav>
       </div>
@@ -190,9 +191,12 @@ function SiteFooter() {
   return (
     <footer className="border-t border-hairline bg-surface">
       <div className="mx-auto flex max-w-5xl flex-wrap items-center justify-between gap-3 px-4 py-6 md:px-6">
-        <p className="text-sm text-ink-muted">
-          A portfolio project. Sample data is fictional.
-        </p>
+        <div className="flex items-center gap-2">
+          <LogoMark className="h-4 w-4 text-ink-subtle" />
+          <p className="text-sm text-ink-muted">
+            A portfolio project. Sample data is fictional.
+          </p>
+        </div>
         <a
           href="https://github.com/Griffinsshem/clinicflow"
           className="text-sm font-medium text-accent hover:underline"
