@@ -1,11 +1,3 @@
-"""
-Environment-driven configuration.
-
-Nothing here has a usable default for a secret. Development falls back
-to placeholders so the app runs locally; production validates and
-raises on startup if anything is missing or still a placeholder.
-"""
-
 import os
 from datetime import timedelta
 
@@ -16,16 +8,6 @@ load_dotenv()
 _PLACEHOLDERS = {"", "change-me", "changeme", "secret", "dev"}
 
 def _normalise_database_url(url: str) -> str:
-    """
-    Force the psycopg3 driver onto the connection URL.
-
-    Managed Postgres providers hand out URLs beginning "postgres://",
-    a scheme SQLAlchemy 2.x dropped support for, and even
-    "postgresql://" resolves to psycopg2 — which is not installed. Both
-    are rewritten to "postgresql+psycopg://" so the same code runs
-    locally and in production without the deploy failing at boot with a
-    driver error.
-    """
     if url.startswith("postgres://"):
         return url.replace("postgres://", "postgresql+psycopg://", 1)
     if url.startswith("postgresql://"):
@@ -62,6 +44,8 @@ class BaseConfig:
 
     CORS_ORIGINS = _split_origins(os.getenv("CORS_ORIGINS", ""))
 
+    DEMO_ENABLED = os.getenv("DEMO_ENABLED", "false").lower() in {"1", "true", "yes"}
+
     BEHIND_PROXY = False
 
     @classmethod
@@ -82,6 +66,7 @@ class TestingConfig(BaseConfig):
     JWT_ACCESS_TOKEN_EXPIRES = timedelta(minutes=15)
     CORS_ORIGINS = ["http://localhost:3000"]
     RATELIMIT_ENABLED = False
+    DEMO_ENABLED = True
 
 
 class ProductionConfig(BaseConfig):
