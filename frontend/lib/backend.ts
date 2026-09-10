@@ -9,7 +9,7 @@ if (!API_URL) {
   throw new Error("API_URL is not set. Copy .env.example to .env.local.");
 }
 
-const REQUEST_TIMEOUT_MS = 15_000;
+const REQUEST_TIMEOUT_MS = 60_000;
 
 export interface BackendResult<T> {
   status: number;
