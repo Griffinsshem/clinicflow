@@ -14,7 +14,7 @@ export function UserMenu({ session }: { session: Session }) {
     setSigningOut(true);
     await fetch("/api/auth/logout", { method: "POST" });
     router.refresh();
-    router.push("/login");
+    router.push("/");
   }
 
   return (
