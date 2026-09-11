@@ -5,6 +5,7 @@ import { useMemo, useState } from "react";
 import { Check } from "lucide-react";
 
 import { CompleteDialog } from "@/components/follow-ups/CompleteDialog";
+import { Avatar } from "@/components/ui/Avatar";
 import { Badge } from "@/components/ui/Badge";
 import { Button } from "@/components/ui/Button";
 import { Panel, PanelHeader } from "@/components/ui/Panel";
@@ -106,6 +107,11 @@ export default function FollowUpsPage() {
                     key={followUp.id}
                     className="flex items-start justify-between gap-3 px-4 py-3"
                   >
+                    <Avatar
+                      name={followUp.patient?.full_name ?? "?"}
+                      size="sm"
+                      className="opacity-60"
+                    />
                     <div className="min-w-0">
                       <PatientLink followUp={followUp} muted />
                       <p className="truncate text-sm text-ink-subtle">
@@ -167,16 +173,20 @@ function Section({
           {followUps.map((followUp) => (
             <li
               key={followUp.id}
-              className="flex flex-wrap items-center gap-x-4 gap-y-2 px-4 py-3"
+              className="px-4 py-3 sm:flex sm:items-center sm:gap-4"
             >
-              <div className="min-w-0 flex-1">
-                <PatientLink followUp={followUp} />
-                <p className="truncate text-sm text-ink-muted">
-                  {followUp.reason}
-                </p>
+              <div className="flex min-w-0 flex-1 items-center gap-3">
+                <Avatar name={followUp.patient?.full_name ?? "?"} size="sm" />
+
+                <div className="min-w-0 flex-1">
+                  <PatientLink followUp={followUp} />
+                  <p className="truncate text-sm text-ink-muted">
+                    {followUp.reason}
+                  </p>
+                </div>
               </div>
 
-              <div className="flex items-center gap-2">
+              <div className="mt-2.5 flex items-center gap-2 pl-11 sm:mt-0 sm:pl-0">
                 <Badge tone={tone}>
                   {tone === "brick"
                     ? relativeDays(followUp.follow_up_date)
