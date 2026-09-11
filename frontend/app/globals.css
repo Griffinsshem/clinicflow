@@ -30,6 +30,9 @@
    */
   --font-sans: var(--font-public-sans), ui-sans-serif, system-ui, sans-serif;
 
+  /* Landing page only. Never used inside the application. */
+  --font-serif: var(--font-source-serif), ui-serif, Georgia, serif;
+
   --text-xs: 0.75rem;
   --text-sm: 0.8125rem;
   --text-base: 0.875rem;   /* 14px: dense operational UI, not marketing */
@@ -97,22 +100,6 @@
   }
 }
 
-/* --- Motion ------------------------------------------------------------
- *
- * One animation in the entire product, used once, on the landing page's
- * hero panel. Deliberately not a library and deliberately not applied
- * to every section: fade-and-rise entrances on each block, and hover
- * transitions on every card, are the generic default — they read as
- * decoration and they delay the reader.
- *
- * This one earns its place because the hero panel IS the argument. The
- * rows arriving in sequence mirrors what the product does: follow-ups
- * surfacing one after another instead of sitting unnoticed. It runs
- * once, takes under half a second, and never repeats.
- *
- * The reduced-motion rule in @layer base already collapses this to
- * near-zero duration, so no separate handling is needed here.
- */
 @keyframes rise-in {
   from {
     opacity: 0;
@@ -125,7 +112,5 @@
 }
 
 .animate-rise {
-  /* backwards fill keeps the element invisible during its delay, rather
-     than flashing at full opacity before the animation starts. */
   animation: rise-in 380ms cubic-bezier(0.2, 0.6, 0.2, 1) backwards;
 }

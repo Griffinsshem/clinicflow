@@ -1,8 +1,28 @@
 import Link from "next/link";
+import {
+  CalendarDays,
+  LayoutDashboard,
+  RotateCcw,
+  Users,
+} from "lucide-react";
 
 import { Logo, LogoMark } from "@/components/Logo";
 import { DemoButton } from "@/components/landing/DemoButton";
-import { HeroPanel } from "@/components/landing/HeroPanel";
+import { ProductPreview } from "@/components/landing/ProductPreview";
+
+/*
+ * Landing page.
+ *
+ * Centred hero, product preview below, then the problem, the features,
+ * and how it works. No testimonials, no pricing, no logo wall, no
+ * invented traction numbers — this is a product being prepared for a
+ * first pilot, and manufacturing social proof it does not have would be
+ * the least trustworthy thing a healthcare tool could do.
+ *
+ * The features section describes four capabilities because there are
+ * four. Padding it to six would mean writing copy for things that do
+ * not exist.
+ */
 
 export const metadata = {
   title: "ClinicFlow — appointment and follow-up management for small clinics",
@@ -14,13 +34,13 @@ export default function LandingPage() {
   return (
     <div className="min-h-dvh">
       <SiteHeader />
-
       <main>
         <Hero />
-        <Problem />
+        <Facts />
+        <Features />
         <HowItWorks />
+        <ClosingCta />
       </main>
-
       <SiteFooter />
     </div>
   );
@@ -31,7 +51,6 @@ function SiteHeader() {
     <header className="sticky top-0 z-30 border-b border-hairline bg-surface/95 backdrop-blur-sm">
       <div className="mx-auto flex h-14 max-w-5xl items-center justify-between px-4 md:px-6">
         <Logo />
-
         <nav className="flex items-center gap-4">
           <Link
             href="/login"
@@ -53,19 +72,29 @@ function SiteHeader() {
 
 function Hero() {
   return (
-    <section className="mx-auto max-w-5xl px-4 py-16 md:px-6 md:py-24">
-      <div className="grid items-center gap-10 lg:grid-cols-[1fr_1.1fr] lg:gap-14">
-        <div>
-          <h1 className="text-3xl font-semibold leading-tight tracking-tight text-ink md:text-4xl">
-            A calmer way to manage clinic appointments.
+    <section className="border-b border-hairline bg-surface">
+      <div className="mx-auto max-w-5xl px-4 pt-14 md:px-6 md:pt-20">
+        <div className="mx-auto max-w-2xl text-center">
+          <h1 className="text-4xl font-semibold leading-[1.1] tracking-tight text-ink md:text-5xl">
+            Nobody falls through
+            <br />
+            {/*
+             * The page's one memorable moment. An italic serif against
+             * the sans is a genuine structural contrast — not a colour
+             * accent on a single word, which is the commonest tell of a
+             * generated page.
+             */}
+            <span className="font-serif italic font-normal text-accent">
+              the cracks
+            </span>
           </h1>
 
-          <p className="mt-4 max-w-md text-lg leading-relaxed text-ink-muted">
-            ClinicFlow keeps your schedule in one place — and makes sure the
-            patients who need seeing again actually get seen.
+          <p className="mx-auto mt-5 max-w-lg text-lg leading-relaxed text-ink-muted">
+            Appointments, visit history and follow-ups in one place — so the
+            patient who needs seeing again actually gets seen.
           </p>
 
-          <div className="mt-7 flex flex-wrap items-center gap-3">
+          <div className="mt-7 flex flex-wrap items-center justify-center gap-3">
             <DemoButton />
             <Link
               href="/register"
@@ -80,108 +109,158 @@ function Hero() {
           </p>
         </div>
 
-        <HeroPanel />
+        {/* Overlaps the section boundary, so the preview sits across the
+            join rather than being boxed inside one band. */}
+        <div className="mx-auto mt-12 max-w-4xl translate-y-px">
+          <ProductPreview />
+        </div>
       </div>
+      <div className="h-16 md:h-20" />
     </section>
   );
 }
 
-function Problem() {
+function Facts() {
+  /*
+   * Facts about the workflow, not invented traction.
+   *
+   * The reference design this follows uses product claims here. We have
+   * no customers and no usage numbers, so inventing "500+ clinics" would
+   * be a straightforward lie. These are true statements about what the
+   * software does.
+   */
+  const facts = [
+    { value: "5", label: "Appointment statuses tracked" },
+    { value: "1", label: "Click from a completed visit to the next booking" },
+    { value: "0", label: "Follow-ups that quietly disappear" },
+  ];
+
   return (
-    <section className="border-y border-hairline bg-surface">
-      <div className="mx-auto max-w-5xl px-4 py-14 md:px-6 md:py-20">
+    <section className="border-b border-hairline">
+      <dl className="mx-auto grid max-w-5xl divide-y divide-hairline px-4 sm:grid-cols-3 sm:divide-x sm:divide-y-0 md:px-6">
+        {facts.map(({ value, label }) => (
+          <div key={label} className="px-2 py-7 text-center">
+            <dt className="text-3xl font-semibold tabular text-ink">{value}</dt>
+            <dd className="mx-auto mt-1 max-w-[14rem] text-sm text-ink-muted">
+              {label}
+            </dd>
+          </div>
+        ))}
+      </dl>
+    </section>
+  );
+}
+
+function Features() {
+  const features = [
+    {
+      icon: Users,
+      title: "Patient records",
+      detail:
+        "Name and a phone number is enough to start. Search by any of it, and see a full visit history on one page.",
+    },
+    {
+      icon: CalendarDays,
+      title: "Appointments",
+      detail:
+        "Book, confirm, complete or mark a no-show. Filter by date, status or type without leaving the schedule.",
+    },
+    {
+      icon: RotateCcw,
+      title: "Follow-ups",
+      detail:
+        "Record when someone needs seeing again. Overdue and due-today surface on their own, in a list you work through.",
+    },
+    {
+      icon: LayoutDashboard,
+      title: "Daily overview",
+      detail:
+        "Today's schedule, outstanding follow-ups and the shape of the week — the four things worth knowing on arrival.",
+    },
+  ];
+
+  return (
+    <section className="border-b border-hairline bg-surface">
+      <div className="mx-auto max-w-5xl px-4 py-16 md:px-6 md:py-20">
         <div className="max-w-2xl">
-          <h2 className="text-2xl font-semibold tracking-tight text-ink">
-            Patients slip through the gaps
+          <h2 className="text-3xl font-semibold tracking-tight text-ink">
+            Four things,{" "}
+            <span className="font-serif italic font-normal text-accent">
+              done properly
+            </span>
           </h2>
           <p className="mt-3 text-lg leading-relaxed text-ink-muted">
-            Most small clinics run on a paper diary, a phone, and someone&apos;s
-            memory. That works for today&apos;s appointments. It does not work
-            for the patient who was told to come back in six weeks.
+            Not a hospital system. A clinic needs to know who is coming, who came,
+            and who still needs to.
           </p>
         </div>
 
-        
-        <dl className="mt-10 grid gap-x-10 gap-y-8 border-t border-hairline pt-8 sm:grid-cols-3">
-          {[
-            {
-              term: "Follow-ups get forgotten",
-              detail:
-                "A note in a diary is only found if someone thinks to look for it.",
-            },
-            {
-              term: "No view of the week",
-              detail:
-                "Knowing how busy Thursday is means counting entries by hand.",
-            },
-            {
-              term: "Records take time to find",
-              detail:
-                "Looking up a patient's history interrupts whoever is at the desk.",
-            },
-          ].map(({ term, detail }) => (
-            <div key={term}>
-              <dt className="font-medium text-ink">{term}</dt>
-              <dd className="mt-1.5 text-ink-muted">{detail}</dd>
+        <div className="mt-10 grid gap-x-10 gap-y-9 sm:grid-cols-2">
+          {features.map(({ icon: Icon, title, detail }) => (
+            <div key={title} className="border-t border-line pt-5">
+              <span className="flex h-8 w-8 items-center justify-center rounded-md bg-accent-soft text-accent">
+                <Icon className="h-4 w-4" aria-hidden="true" />
+              </span>
+              <h3 className="mt-3 font-medium text-ink">{title}</h3>
+              <p className="mt-1.5 leading-relaxed text-ink-muted">{detail}</p>
             </div>
           ))}
-        </dl>
+        </div>
       </div>
     </section>
   );
 }
 
 function HowItWorks() {
+  /*
+   * Numbered because this genuinely is a sequence — each step depends on
+   * the one before. Numbered markers on an unordered list would be
+   * decoration; on a workflow they carry information.
+   */
   const steps = [
-    {
-      title: "Add the patient",
-      detail:
-        "Name and a phone number is enough to start. Everything else is optional.",
-    },
-    {
-      title: "Book the appointment",
-      detail:
-        "Confirm it, complete it, or mark a no-show as the day goes on.",
-    },
-    {
-      title: "Set the follow-up",
-      detail:
-        "Record when they need seeing again, and why.",
-    },
-    {
-      title: "It comes back to you",
-      detail:
-        "Due and overdue follow-ups surface on the dashboard. Complete one and book the next visit in the same step.",
-    },
+    { title: "Add the patient", detail: "A name and a number is enough." },
+    { title: "Book the appointment", detail: "Confirm or complete it as the day goes on." },
+    { title: "Set the follow-up", detail: "When they need seeing again, and why." },
+    { title: "It comes back to you", detail: "Due and overdue surface on the dashboard." },
   ];
 
   return (
-    <section className="mx-auto max-w-5xl px-4 py-14 md:px-6 md:py-20">
-      <h2 className="text-2xl font-semibold tracking-tight text-ink">
-        How it works
-      </h2>
+    <section className="border-b border-hairline">
+      <div className="mx-auto max-w-5xl px-4 py-16 md:px-6 md:py-20">
+        <h2 className="text-3xl font-semibold tracking-tight text-ink">
+          How it works
+        </h2>
 
-      <ol className="mt-8 grid gap-8 sm:grid-cols-2 lg:grid-cols-4">
-        {steps.map((step, index) => (
-          <li key={step.title} className="border-t border-line pt-4">
-            <span className="text-sm font-medium tabular text-ink-subtle">
-              {index + 1}
-            </span>
-            <h3 className="mt-2 font-medium text-ink">{step.title}</h3>
-            <p className="mt-1.5 text-ink-muted">{step.detail}</p>
-          </li>
-        ))}
-      </ol>
+        <ol className="mt-9 grid gap-8 sm:grid-cols-2 lg:grid-cols-4">
+          {steps.map((step, index) => (
+            <li key={step.title} className="border-t border-line pt-4">
+              <span className="text-sm font-medium tabular text-ink-subtle">
+                {String(index + 1).padStart(2, "0")}
+              </span>
+              <h3 className="mt-2 font-medium text-ink">{step.title}</h3>
+              <p className="mt-1.5 text-ink-muted">{step.detail}</p>
+            </li>
+          ))}
+        </ol>
+      </div>
+    </section>
+  );
+}
 
-      <div className="mt-12 flex flex-wrap items-center gap-3 border-t border-hairline pt-8">
-        <DemoButton />
-        <p className="text-sm text-ink-muted">
-          Or{" "}
-          <Link href="/register" className="font-medium text-accent hover:underline">
-            create your own clinic
-          </Link>
-          .
+function ClosingCta() {
+  return (
+    <section className="bg-surface">
+      <div className="mx-auto max-w-5xl px-4 py-16 text-center md:px-6 md:py-20">
+        <h2 className="text-2xl font-semibold tracking-tight text-ink">
+          Have a look around
+        </h2>
+        <p className="mx-auto mt-2 max-w-md text-ink-muted">
+          The demo is a real clinic with sample patients, appointments and
+          follow-ups. It is yours alone and takes one click.
         </p>
+        <div className="mt-6 flex justify-center">
+          <DemoButton />
+        </div>
       </div>
     </section>
   );
@@ -189,7 +268,7 @@ function HowItWorks() {
 
 function SiteFooter() {
   return (
-    <footer className="border-t border-hairline bg-surface">
+    <footer className="border-t border-hairline">
       <div className="mx-auto flex max-w-5xl flex-wrap items-center justify-between gap-3 px-4 py-6 md:px-6">
         <div className="flex items-center gap-2">
           <LogoMark className="h-4 w-4 text-ink-subtle" />
