@@ -74,7 +74,9 @@ export function ProductPreview() {
           <PreviewPanel title="Today">
             {SCHEDULE.map((row) => (
               <div key={row.name} className="flex items-center gap-2 px-2.5 py-2">
-                <span className="w-12 shrink-0 text-[0.6875rem] font-medium tabular text-ink">
+                <span
+                  className="w-14 shrink-0 text-[0.6875rem] font-medium tabular text-ink"
+                >
                   {row.time}
                 </span>
                 <Avatar name={row.name} size="sm" className="h-5 w-5 text-[0.625rem]" />

@@ -10,20 +10,6 @@ import { Logo, LogoMark } from "@/components/Logo";
 import { DemoButton } from "@/components/landing/DemoButton";
 import { ProductPreview } from "@/components/landing/ProductPreview";
 
-/*
- * Landing page.
- *
- * Centred hero, product preview below, then the problem, the features,
- * and how it works. No testimonials, no pricing, no logo wall, no
- * invented traction numbers — this is a product being prepared for a
- * first pilot, and manufacturing social proof it does not have would be
- * the least trustworthy thing a healthcare tool could do.
- *
- * The features section describes four capabilities because there are
- * four. Padding it to six would mean writing copy for things that do
- * not exist.
- */
-
 export const metadata = {
   title: "ClinicFlow — appointment and follow-up management for small clinics",
   description:
@@ -78,12 +64,6 @@ function Hero() {
           <h1 className="text-4xl font-semibold leading-[1.1] tracking-tight text-ink md:text-5xl">
             Nobody falls through
             <br />
-            {/*
-             * The page's one memorable moment. An italic serif against
-             * the sans is a genuine structural contrast — not a colour
-             * accent on a single word, which is the commonest tell of a
-             * generated page.
-             */}
             <span className="font-serif italic font-normal text-accent">
               the cracks
             </span>
@@ -108,27 +88,15 @@ function Hero() {
             The demo opens a private clinic with sample data. Nothing to set up.
           </p>
         </div>
-
-        {/* Overlaps the section boundary, so the preview sits across the
-            join rather than being boxed inside one band. */}
-        <div className="mx-auto mt-12 max-w-4xl translate-y-px">
+        <div className="mx-auto mt-12 max-w-4xl pb-16 md:pb-20">
           <ProductPreview />
         </div>
       </div>
-      <div className="h-16 md:h-20" />
     </section>
   );
 }
 
 function Facts() {
-  /*
-   * Facts about the workflow, not invented traction.
-   *
-   * The reference design this follows uses product claims here. We have
-   * no customers and no usage numbers, so inventing "500+ clinics" would
-   * be a straightforward lie. These are true statements about what the
-   * software does.
-   */
   const facts = [
     { value: "5", label: "Appointment statuses tracked" },
     { value: "1", label: "Click from a completed visit to the next booking" },
@@ -182,7 +150,8 @@ function Features() {
   return (
     <section className="border-b border-hairline bg-surface">
       <div className="mx-auto max-w-5xl px-4 py-16 md:px-6 md:py-20">
-        <div className="max-w-2xl">
+        <div className="lg:grid lg:grid-cols-[minmax(0,20rem)_1fr] lg:gap-12">
+        <div className="lg:sticky lg:top-24 lg:self-start">
           <h2 className="text-3xl font-semibold tracking-tight text-ink">
             Four things,{" "}
             <span className="font-serif italic font-normal text-accent">
@@ -195,7 +164,7 @@ function Features() {
           </p>
         </div>
 
-        <div className="mt-10 grid gap-x-10 gap-y-9 sm:grid-cols-2">
+        <div className="mt-10 grid gap-x-10 gap-y-9 sm:grid-cols-2 lg:mt-0">
           {features.map(({ icon: Icon, title, detail }) => (
             <div key={title} className="border-t border-line pt-5">
               <span className="flex h-8 w-8 items-center justify-center rounded-md bg-accent-soft text-accent">
@@ -206,17 +175,13 @@ function Features() {
             </div>
           ))}
         </div>
+        </div>
       </div>
     </section>
   );
 }
 
 function HowItWorks() {
-  /*
-   * Numbered because this genuinely is a sequence — each step depends on
-   * the one before. Numbered markers on an unordered list would be
-   * decoration; on a workflow they carry information.
-   */
   const steps = [
     { title: "Add the patient", detail: "A name and a number is enough." },
     { title: "Book the appointment", detail: "Confirm or complete it as the day goes on." },
