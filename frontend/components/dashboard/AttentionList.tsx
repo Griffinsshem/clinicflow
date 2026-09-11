@@ -1,5 +1,6 @@
 import Link from "next/link";
 
+import { Avatar } from "@/components/ui/Avatar";
 import { Badge } from "@/components/ui/Badge";
 import { Panel, PanelHeader } from "@/components/ui/Panel";
 import { EmptyState } from "@/components/ui/States";
@@ -34,6 +35,8 @@ export function AttentionList({ followUps }: { followUps: FollowUp[] }) {
                 href={`/patients/${followUp.patient_id}`}
                 className="flex items-start gap-3 px-4 py-3 hover:bg-ground transition-colors duration-150"
               >
+                <Avatar name={followUp.patient?.full_name ?? "?"} size="sm" />
+
                 <div className="min-w-0 flex-1">
                   <p className="truncate font-medium text-ink">
                     {followUp.patient?.full_name ?? "Unknown patient"}

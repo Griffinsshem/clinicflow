@@ -11,6 +11,7 @@ import {
   type AppointmentFilters,
 } from "@/components/appointments/FilterBar";
 import { StatusMenu } from "@/components/appointments/StatusMenu";
+import { Avatar } from "@/components/ui/Avatar";
 import { AppointmentBadge } from "@/components/ui/Badge";
 import { Button } from "@/components/ui/Button";
 import { Modal } from "@/components/ui/Modal";
@@ -167,32 +168,45 @@ function AppointmentsView() {
                 {group.items.map((appointment) => (
                   <li
                     key={appointment.id}
-                    className="flex flex-wrap items-center gap-x-4 gap-y-2 px-4 py-3"
+                    className="px-4 py-3 sm:flex sm:items-center sm:gap-4"
                   >
-                    <time
-                      dateTime={appointment.scheduled_at}
-                      className="w-16 shrink-0 text-sm font-medium tabular text-ink"
-                    >
-                      {formatTime(appointment.scheduled_at)}
-                    </time>
-
-                    <div className="min-w-0 flex-1">
-                      <Link
-                        href={`/patients/${appointment.patient_id}`}
-                        className="font-medium text-ink hover:underline"
+                    <div className="flex min-w-0 flex-1 items-center gap-3">
+                      <time
+                        dateTime={appointment.scheduled_at}
+                        className="w-16 shrink-0 text-sm font-medium tabular text-ink"
                       >
-                        {appointment.patient?.full_name ?? "Unknown patient"}
-                      </Link>
-                      <p className="text-sm text-ink-muted">
-                        {humanise(appointment.appointment_type)}
-                        {appointment.patient?.phone && (
-                          <span className="tabular"> · {appointment.patient.phone}</span>
-                        )}
-                      </p>
+                        {formatTime(appointment.scheduled_at)}
+                      </time>
+
+                      <Avatar
+                        name={appointment.patient?.full_name ?? "?"}
+                        size="sm"
+                      />
+
+                      <div className="min-w-0 flex-1">
+                        <Link
+                          href={`/patients/${appointment.patient_id}`}
+                          className="block truncate font-medium text-ink hover:underline"
+                        >
+                          {appointment.patient?.full_name ?? "Unknown patient"}
+                        </Link>
+                        <p className="truncate text-sm text-ink-muted">
+                          {humanise(appointment.appointment_type)}
+                          {appointment.patient?.phone && (
+                            <span className="tabular">
+                              {" \u00B7 "}
+                              {appointment.patient.phone}
+                            </span>
+                          )}
+                        </p>
+                      </div>
                     </div>
 
-                    <div className="flex items-center gap-2">
-                      <StatusMenu appointment={appointment} onChanged={refetch} />
+                    <div className="mt-2.5 flex items-center gap-2 pl-[6.25rem] sm:mt-0 sm:pl-0">
+                      <StatusMenu
+                        appointment={appointment}
+                        onChanged={refetch}
+                      />
                       <AppointmentBadge status={appointment.status} />
                     </div>
                   </li>

@@ -3,6 +3,7 @@
 import { useMemo } from "react";
 
 import { AttentionList } from "@/components/dashboard/AttentionList";
+import { Greeting } from "@/components/dashboard/Greeting";
 import {
   MetricStrip,
   MetricStripSkeleton,
@@ -12,10 +13,13 @@ import { WeeklyActivity } from "@/components/dashboard/WeeklyActivity";
 import { Panel } from "@/components/ui/Panel";
 import { ErrorState, SkeletonRows } from "@/components/ui/States";
 import { useApi } from "@/hooks/useApi";
+import { useSession } from "@/providers/SessionProvider";
 import { timezoneOffsetMinutes } from "@/lib/client";
 import type { DashboardData } from "@/types/api";
 
 export default function DashboardPage() {
+  const session = useSession();
+
   const path = useMemo(
     () => `/dashboard?tz_offset=${timezoneOffsetMinutes()}`,
     [],
@@ -25,14 +29,7 @@ export default function DashboardPage() {
 
   return (
     <div className="space-y-6">
-      <header>
-        <h1 className="text-2xl font-semibold tracking-tight text-ink">
-          Dashboard
-        </h1>
-        <p className="mt-0.5 text-ink-muted">
-          Today at a glance, and who still needs seeing.
-        </p>
-      </header>
+      <Greeting name={session.user.full_name} />
 
       {error ? (
         <Panel>

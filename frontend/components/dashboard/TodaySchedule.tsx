@@ -1,5 +1,6 @@
 import Link from "next/link";
 
+import { Avatar } from "@/components/ui/Avatar";
 import { AppointmentBadge } from "@/components/ui/Badge";
 import { Panel, PanelHeader } from "@/components/ui/Panel";
 import { EmptyState } from "@/components/ui/States";
@@ -40,6 +41,8 @@ export function TodaySchedule({ appointments }: { appointments: Appointment[] })
                 >
                   {formatTime(appointment.scheduled_at)}
                 </time>
+
+                <Avatar name={appointment.patient?.full_name ?? "?"} size="sm" />
 
                 <div className="min-w-0 flex-1">
                   <p className="truncate font-medium text-ink">

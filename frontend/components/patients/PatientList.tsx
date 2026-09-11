@@ -1,6 +1,8 @@
 import Link from "next/link";
 import { ChevronRight } from "lucide-react";
 
+import { Avatar } from "@/components/ui/Avatar";
+
 import { formatDate } from "@/lib/format";
 import type { Patient } from "@/types/api";
 
@@ -13,6 +15,8 @@ export function PatientList({ patients }: { patients: Patient[] }) {
             href={`/patients/${patient.id}`}
             className="flex items-center gap-3 px-4 py-3 transition-colors hover:bg-ground"
           >
+            <Avatar name={patient.full_name} />
+
             <div className="grid min-w-0 flex-1 gap-x-4 gap-y-0.5 sm:grid-cols-[2fr_1.5fr_1fr] sm:items-center">
               <p className="truncate font-medium text-ink">{patient.full_name}</p>
 
