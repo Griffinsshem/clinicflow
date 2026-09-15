@@ -150,8 +150,7 @@ function Features() {
   return (
     <section className="border-b border-hairline bg-surface">
       <div className="mx-auto max-w-5xl px-4 py-16 md:px-6 md:py-20">
-        <div className="lg:grid lg:grid-cols-[minmax(0,20rem)_1fr] lg:gap-12">
-        <div className="lg:sticky lg:top-24 lg:self-start">
+        <div className="mx-auto max-w-2xl text-center">
           <h2 className="text-3xl font-semibold tracking-tight text-ink">
             Four things,{" "}
             <span className="font-serif italic font-normal text-accent">
@@ -159,12 +158,12 @@ function Features() {
             </span>
           </h2>
           <p className="mt-3 text-lg leading-relaxed text-ink-muted">
-            Not a hospital system. A clinic needs to know who is coming, who came,
-            and who still needs to.
+            Not a hospital system. A clinic needs to know who is coming, who
+            came, and who still needs to.
           </p>
         </div>
 
-        <div className="mt-10 grid gap-x-10 gap-y-9 sm:grid-cols-2 lg:mt-0">
+        <div className="mt-12 grid gap-x-8 gap-y-10 sm:grid-cols-2 lg:grid-cols-4">
           {features.map(({ icon: Icon, title, detail }) => (
             <div key={title} className="border-t border-line pt-5">
               <span className="flex h-8 w-8 items-center justify-center rounded-md bg-accent-soft text-accent">
@@ -174,7 +173,6 @@ function Features() {
               <p className="mt-1.5 leading-relaxed text-ink-muted">{detail}</p>
             </div>
           ))}
-        </div>
         </div>
       </div>
     </section>
@@ -192,11 +190,11 @@ function HowItWorks() {
   return (
     <section className="border-b border-hairline">
       <div className="mx-auto max-w-5xl px-4 py-16 md:px-6 md:py-20">
-        <h2 className="text-3xl font-semibold tracking-tight text-ink">
+        <h2 className="text-center text-3xl font-semibold tracking-tight text-ink">
           How it works
         </h2>
 
-        <ol className="mt-9 grid gap-8 sm:grid-cols-2 lg:grid-cols-4">
+        <ol className="mt-12 grid gap-x-8 gap-y-10 sm:grid-cols-2 lg:grid-cols-4">
           {steps.map((step, index) => (
             <li key={step.title} className="border-t border-line pt-4">
               <span className="text-sm font-medium tabular text-ink-subtle">
