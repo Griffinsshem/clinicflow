@@ -1,14 +1,15 @@
-
-databases:
-  - name: clinicflow-db
-    databaseName: clinicflow
-    user: clinicflow
-    plan: free
-    # Stated explicitly. Without it Render uses the workspace
-    # default, which is how the service and database ended up in
-    # different regions on the first attempt.
-    region: oregon
-    postgresMajorVersion: "16"
+# Render Blueprint — infrastructure as code.
+#
+# Defining the deployment here rather than clicking through a dashboard
+# means the configuration is reviewable, diffable, and reproducible.
+#
+# No `databases:` block. PostgreSQL is hosted on Neon, not Render: the
+# free Render tier deletes a database after 30 days, which would break a
+# portfolio link a month after deploying. Neon's free tier has no expiry
+# and is ordinary Postgres 16, so the same migrations run unchanged.
+#
+# DATABASE_URL is set in the Render dashboard (sync: false), keeping the
+# credential out of the repository.
 
 services:
   - type: web
