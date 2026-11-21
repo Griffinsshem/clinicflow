@@ -33,7 +33,7 @@ Every record belongs to a clinic, and no clinic can see another's data — enfor
 **Backend** — Flask, SQLAlchemy 2, Alembic, Pydantic v2, PostgreSQL 16  
 **Deployment** — Vercel (frontend), Render (API), Neon (database)
 
-99 backend tests, 15 of them covering cross-tenant isolation specifically.
+117 backend tests, 15 of them covering cross-tenant isolation specifically.
 
 ---
 
@@ -65,7 +65,7 @@ backend/
     schemas/     Pydantic request validation
     utils/       Scoping, decorators, response envelope
   migrations/    Alembic revisions
-  tests/         99 tests
+  tests/         117 tests
 
 frontend/
   app/
@@ -127,7 +127,15 @@ ClinicFlow puts the token in an **httpOnly cookie** set by a Next.js route handl
 
 That buys two things. An XSS bug cannot exfiltrate the session. And `proxy.ts` can see the cookie, so route protection happens at the edge before a page renders — no flash of a dashboard shell before a client-side redirect.
 
-The cost is a proxy layer and CSRF consideration. The cookie is `sameSite=lax`, which stops the browser sending it on cross-site writes, and the proxy independently verifies the Origin header on mutating requests.
+The cost is a proxy layer and CSRF consideration. The cookie is `sameSite=lax`, which stops the browser sending it on cross-site writes. That protects authenticated calls, but not the routes that *set* the cookie: another site could auto-submit a hidden form to `/api/auth/login` and sign a visitor into an attacker's account, start a demo session for them, or sign them out. So `proxy.ts` refuses every state-changing request to `/api/*` whose `Origin` does not match the host the browser addressed, including a missing or `null` Origin. It is checked once, centrally, so a route added later cannot forget it, and the data proxy repeats the check as a second layer. See [`frontend/lib/origin.ts`](frontend/lib/origin.ts).
+
+### Rate limiting behind a proxy
+
+Because the browser never calls Flask, every request Flask sees comes from one of Vercel's shared outbound IPs. Keyed on that address, "3 demos per hour per IP" would really mean three demos per hour for *everyone*, and one person could exhaust the login limit for all users.
+
+So the Next.js server forwards the visitor's real IP in `X-Client-IP`, together with a shared secret in `X-Proxy-Secret`. The API is publicly reachable, so anyone can send an `X-Client-IP` header; the secret is what makes it trustworthy. Without the correct secret, a request is attributed to its connecting address exactly as before, so forging the header cannot buy a fresh bucket. The secret is compared in constant time, the forwarded value must parse as an IP address, and production refuses to boot without a strong secret. See [`backend/app/utils/client_ip.py`](backend/app/utils/client_ip.py).
+
+Login also has a second, per-account limit: 10 *failed* attempts per email per 15 minutes, across all IPs. The per-IP limit stops one machine hammering the endpoint; the per-account limit stops password guessing spread over many machines. Successful sign-ins do not count, so staff who sign in often are never locked out by it.
 
 ### Aggregate-only dashboard queries
 
@@ -204,7 +212,7 @@ npm run dev                  # http://localhost:3000
 ### Tests
 
 ```bash
-cd backend && pytest -q                       # 99 tests
+cd backend && pytest -q                       # 117 tests
 pytest tests/test_clinic_isolation.py -v      # the isolation suite
 ```
 
@@ -224,6 +232,7 @@ pytest tests/test_clinic_isolation.py -v      # the isolation suite
 | `CORS_ORIGINS` | Comma-separated allowlist. No wildcards. |
 | `JWT_ACCESS_TOKEN_EXPIRES_MINUTES` | Token lifetime, default 60 |
 | `DEMO_ENABLED` | Exposes `POST /api/v1/demo` |
+| `PROXY_SHARED_SECRET` | Shared with the frontend; lets it pass each visitor's real IP for rate limiting. Required in production, at least 32 characters, different from the other secrets |
 
 Generate secrets with `python -c "import secrets; print(secrets.token_urlsafe(64))"`.
 
@@ -234,6 +243,7 @@ In production, `app/config.py` validates these at boot and **refuses to start** 
 | Variable | Purpose |
 |---|---|
 | `API_URL` | Backend base URL, e.g. `http://localhost:5000/api/v1` |
+| `PROXY_SHARED_SECRET` | Same value as the backend's. Optional locally; without it in production, rate limits fall back to Vercel's shared IPs |
 
 Note the absence of a `NEXT_PUBLIC_` prefix. The browser never contacts the API directly, so the backend URL stays server-only and out of the client bundle.
 
@@ -294,7 +304,8 @@ Discriminated on `success`, so a narrowed check in TypeScript gives either `data
 | Login | Uniform response for wrong password and unknown email, including a dummy hash computation so response timing cannot enumerate accounts. |
 | SQL | SQLAlchemy throughout. The one raw statement is a parameterless `SELECT 1` in the health check. |
 | CORS | Explicit origin allowlist from the environment. Production refuses to boot with a wildcard. |
-| Rate limiting | 5 logins/minute, 3 registrations/hour, 3 demos/hour, per IP. |
+| Rate limiting | Per visitor IP: 5 logins/minute, 3 registrations/hour, 3 demos/hour. Per account: 10 failed logins per 15 minutes. The visitor IP is forwarded by the frontend and trusted only with the shared proxy secret. |
+| CSRF | Every state-changing `/api/*` request must carry an `Origin` matching the site, on top of the `sameSite=lax` cookie. Blocks login CSRF, forced demo sessions and forced sign-out. |
 | Errors | Full traceback to logs, generic message to the client. No stack traces, SQL, or paths in responses. |
 | Logging | User and clinic IDs only. Never passwords, tokens, or patient identifiers. |
 
@@ -314,7 +325,9 @@ Named rather than hidden. Each is a considered tradeoff for a portfolio deployme
 
 **No token revocation.** Signing out deletes the cookie but the JWT stays valid until it expires, up to an hour. A revocation list needs a store (Redis) and a check on every request. For a one-hour window with an unreadable cookie, the trade seemed reasonable; a real deployment would add it.
 
-**Rate limiting is per-instance.** Counters live in process memory. Correct on a single instance, but with replicas each holds its own count and the effective limit multiplies. Redis-backed storage is a one-line change to `storage_uri`.
+**Rate limiting is per-process.** Counters live in process memory, and gunicorn runs two workers, each with its own count, so the effective limits are up to double those stated; replicas would multiply them further. Redis-backed storage is a one-line change to `storage_uri`.
+
+**The per-account login limit can be triggered by others.** Someone who knows a staff email can make 10 failed attempts and block sign-in to that account for 15 minutes. That is the standard trade-off for stopping distributed password guessing; a production system would add a CAPTCHA or email-based unlock rather than a hard lockout.
 
 **Hard deletes.** Deleting a patient removes their appointments and follow-ups via `ON DELETE CASCADE`. A clinical system would soft-delete for auditability — a `deleted_at` column and a filter in the scoping helper.
 
@@ -332,13 +345,31 @@ Named rather than hidden. Each is a considered tradeoff for a portfolio deployme
 
 | | |
 |---|---|
-| Frontend | Vercel, root directory `frontend`, `API_URL` set in project settings |
+| Frontend | Vercel, root directory `frontend`, `API_URL` and `PROXY_SHARED_SECRET` set in project settings |
 | API | Render, `render.yaml` blueprint, gunicorn with migrations chained ahead of the server |
 | Database | Neon, PostgreSQL 16, pooled connection |
 
 The database is on Neon rather than Render because Render's free PostgreSQL is **deleted after 30 days** — which would silently break a portfolio link a month after deploying. Neon's free tier has no expiry and is ordinary Postgres, so the same migrations run unchanged.
 
 Migrations run in `startCommand` rather than a pre-deploy hook, which Render reserves for paid tiers. Since `startCommand` is a single shell invocation, `flask db upgrade` completes before gunicorn execs and the workers it forks inherit a migrated database. The `&&` means a failed migration fails the deploy rather than serving traffic against a half-migrated schema.
+
+### Shared proxy secret
+
+The frontend and API share one secret, `PROXY_SHARED_SECRET`, used to trust the forwarded visitor IP (see [rate limiting behind a proxy](#rate-limiting-behind-a-proxy)). It must be identical on both sides.
+
+1. Generate it once: `python -c "import secrets; print(secrets.token_urlsafe(48))"`
+2. Render → the API service → Environment: add `PROXY_SHARED_SECRET`.
+3. Vercel → the project → Settings → Environment Variables: add `PROXY_SHARED_SECRET` with the same value, then redeploy.
+
+Production refuses to boot without it. If a deploy reaches Render before the variable is set, that deploy fails its health check and Render keeps the previous version serving, so set the variable first.
+
+To rotate it, set the new value on both sides and redeploy both. Between the two deploys, rate limits fall back to per-connection (as they were before this fix); nothing breaks.
+
+---
+
+## Changelog
+
+What changed, why, and what each change needs at deploy time: see [CHANGELOG.md](CHANGELOG.md).
 
 ---
 
