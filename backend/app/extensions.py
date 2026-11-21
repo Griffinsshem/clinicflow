@@ -11,9 +11,10 @@ against different databases.
 from flask_cors import CORS
 from flask_jwt_extended import JWTManager
 from flask_limiter import Limiter
-from flask_limiter.util import get_remote_address
 from flask_migrate import Migrate
 from flask_sqlalchemy import SQLAlchemy
+
+from app.utils.client_ip import client_ip
 
 db = SQLAlchemy()
 migrate = Migrate()
@@ -21,7 +22,9 @@ jwt = JWTManager()
 cors = CORS()
 
 limiter = Limiter(
-    key_func=get_remote_address,
+    # Keyed on the real visitor, not on Vercel's shared outbound IPs.
+    # See app/utils/client_ip.py.
+    key_func=client_ip,
     default_limits=[], 
     storage_uri="memory://",
     strategy="fixed-window",

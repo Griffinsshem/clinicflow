@@ -7,6 +7,8 @@ load_dotenv()
 
 _PLACEHOLDERS = {"", "change-me", "changeme", "secret", "dev"}
 
+MIN_PROXY_SECRET_LENGTH = 32
+
 def _normalise_database_url(url: str) -> str:
     if url.startswith("postgres://"):
         return url.replace("postgres://", "postgresql+psycopg://", 1)
@@ -45,6 +47,10 @@ class BaseConfig:
     CORS_ORIGINS = _split_origins(os.getenv("CORS_ORIGINS", ""))
 
     DEMO_ENABLED = os.getenv("DEMO_ENABLED", "false").lower() in {"1", "true", "yes"}
+
+    # Shared with the Next.js server. Requests carrying it may tell us the
+    # visitor's real IP for rate limiting. See app/utils/client_ip.py.
+    PROXY_SHARED_SECRET = os.getenv("PROXY_SHARED_SECRET", "")
 
     BEHIND_PROXY = False
 
@@ -90,6 +96,17 @@ class ProductionConfig(BaseConfig):
             problems.append("SECRET_KEY and JWT_SECRET_KEY must differ")
         if not cls.SQLALCHEMY_DATABASE_URI:
             problems.append("DATABASE_URL is not set")
+        if (
+            cls.PROXY_SHARED_SECRET in _PLACEHOLDERS
+            or cls.PROXY_SHARED_SECRET.startswith("dev-only")
+            or len(cls.PROXY_SHARED_SECRET) < MIN_PROXY_SECRET_LENGTH
+        ):
+            problems.append(
+                "PROXY_SHARED_SECRET is missing, a placeholder, or shorter than "
+                f"{MIN_PROXY_SECRET_LENGTH} characters"
+            )
+        if cls.PROXY_SHARED_SECRET in {cls.SECRET_KEY, cls.JWT_SECRET_KEY}:
+            problems.append("PROXY_SHARED_SECRET must differ from the other secrets")
         if not cls.CORS_ORIGINS:
             problems.append("CORS_ORIGINS is not set")
         if "*" in cls.CORS_ORIGINS:

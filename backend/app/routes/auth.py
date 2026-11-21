@@ -8,6 +8,7 @@ from app.models.user import User
 from app.schemas.auth import LoginSchema, RegisterSchema
 from app.schemas.base import parse_request
 from app.services.auth_service import authenticate_user, register_clinic_with_admin
+from app.utils.client_ip import login_email_key
 from app.utils.decorators import auth_required
 from app.utils.responses import success_response
 
@@ -53,6 +54,13 @@ def register():
 
 @bp.post("/auth/login")
 @limiter.limit("5 per minute")
+# Per account, counting only failed attempts: stops password guessing
+# spread across many IPs without locking out someone who signs in often.
+@limiter.limit(
+    "10 per 15 minutes",
+    key_func=login_email_key,
+    deduct_when=lambda response: response.status_code == 401,
+)
 def login():
     data = parse_request(LoginSchema, request.get_json(silent=True))
     user = authenticate_user(email=data.email, password=data.password)

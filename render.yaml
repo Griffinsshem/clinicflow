@@ -66,6 +66,11 @@ services:
       - key: CORS_ORIGINS
         sync: false
 
+      # Must equal PROXY_SHARED_SECRET in the Vercel project. Not
+      # generated here, because Vercel needs the same value.
+      - key: PROXY_SHARED_SECRET
+        sync: false
+
       - key: JWT_ACCESS_TOKEN_EXPIRES_MINUTES
         value: "60"
 
