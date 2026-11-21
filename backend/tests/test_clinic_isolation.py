@@ -10,6 +10,8 @@ Every cross-clinic attempt must return 404, not 403. A 403 confirms the
 record exists and lets an attacker map the ID space by probing.
 """
 
+from datetime import datetime, timedelta, timezone
+
 
 class TestPatientIsolation:
     def test_list_shows_only_own_clinic_patients(
@@ -110,7 +112,7 @@ class TestAppointmentIsolation:
             headers=two_clinics["a"]["headers"],
             json={
                 "patient_id": victim["id"],
-                "scheduled_at": "2026-12-01T10:00:00+03:00",
+                "scheduled_at": (datetime.now(timezone.utc) + timedelta(days=10)).isoformat(),
             },
         )
         assert response.status_code == 404

@@ -1,6 +1,20 @@
 """Appointment CRUD, validation, status transitions, and filtering."""
 
+from datetime import datetime, timedelta, timezone
+from urllib.parse import quote
+
 import pytest
+
+
+def _days_ahead(days: int) -> str:
+    """An ISO timestamp N days from now, so tests never age into the past."""
+    when = datetime.now(timezone(timedelta(hours=3))) + timedelta(days=days)
+    return when.replace(second=0, microsecond=0).isoformat()
+
+
+def _hours_ago(hours: int) -> str:
+    when = datetime.now(timezone(timedelta(hours=3))) - timedelta(hours=hours)
+    return when.replace(second=0, microsecond=0).isoformat()
 
 
 class TestAppointmentCrud:
@@ -13,7 +27,7 @@ class TestAppointmentCrud:
             headers=session["headers"],
             json={
                 "patient_id": patient["id"],
-                "scheduled_at": "2026-12-01T10:00:00+03:00",
+                "scheduled_at": _days_ahead(10),
                 "appointment_type": "consultation",
                 "notes": "Initial visit",
             },
@@ -29,7 +43,7 @@ class TestAppointmentCrud:
         appointment = client.post(
             "/api/v1/appointments",
             headers=session["headers"],
-            json={"patient_id": patient["id"], "scheduled_at": "2026-12-01T10:00:00+03:00"},
+            json={"patient_id": patient["id"], "scheduled_at": _days_ahead(10)},
         ).get_json()["data"]
 
         assert appointment["appointment_type"] == "consultation"
@@ -40,8 +54,8 @@ class TestAppointmentCrud:
     ):
         session = register_clinic()
         patient = make_patient(session)
-        make_appointment(session, patient["id"], "2026-11-01T09:00:00+03:00")
-        make_appointment(session, patient["id"], "2026-12-01T09:00:00+03:00")
+        make_appointment(session, patient["id"], _days_ahead(5))
+        make_appointment(session, patient["id"], _days_ahead(30))
 
         response = client.get(
             f"/api/v1/patients/{patient['id']}/appointments", headers=session["headers"]
@@ -74,7 +88,7 @@ class TestAppointmentValidation:
         response = client.post(
             "/api/v1/appointments",
             headers=session["headers"],
-            json={"patient_id": patient["id"], "scheduled_at": "2026-12-01T10:00:00"},
+            json={"patient_id": patient["id"], "scheduled_at": _days_ahead(10)[:19]},
         )
         assert response.status_code == 422
         assert "scheduled_at" in response.get_json()["errors"]
@@ -97,7 +111,7 @@ class TestAppointmentValidation:
             headers=session["headers"],
             json={
                 "patient_id": patient["id"],
-                "scheduled_at": "2026-12-01T10:00:00+03:00",
+                "scheduled_at": _days_ahead(10),
                 **payload,
             },
         )
@@ -109,7 +123,7 @@ class TestAppointmentValidation:
         response = client.post(
             "/api/v1/appointments",
             headers=session["headers"],
-            json={"patient_id": 999999, "scheduled_at": "2026-12-01T10:00:00+03:00"},
+            json={"patient_id": 999999, "scheduled_at": _days_ahead(10)},
         )
         assert response.status_code == 404
 
@@ -140,7 +154,9 @@ class TestStatusTransitions:
     ):
         session = register_clinic()
         patient = make_patient(session)
-        appointment = make_appointment(session, patient["id"])
+        # Yesterday: recording an outcome (completed, no-show) needs a visit
+        # that has already happened.
+        appointment = make_appointment(session, patient["id"], _hours_ago(24))
 
         for status in (first, second):
             response = client.patch(
@@ -160,13 +176,14 @@ class TestStatusTransitions:
     ):
         session = register_clinic()
         patient = make_patient(session)
-        appointment = make_appointment(session, patient["id"])
+        appointment = make_appointment(session, patient["id"], _hours_ago(24))
 
-        client.patch(
+        first = client.patch(
             f"/api/v1/appointments/{appointment['id']}",
             headers=session["headers"],
             json={"status": terminal},
         )
+        assert first.status_code == 200, first.get_json()
         response = client.patch(
             f"/api/v1/appointments/{appointment['id']}",
             headers=session["headers"],
@@ -205,11 +222,12 @@ class TestAppointmentFilters:
     ):
         session = register_clinic()
         patient = make_patient(session)
-        make_appointment(session, patient["id"], "2026-11-01T09:00:00+03:00")
-        make_appointment(session, patient["id"], "2026-12-15T09:00:00+03:00")
+        make_appointment(session, patient["id"], _days_ahead(5))
+        make_appointment(session, patient["id"], _days_ahead(40))
 
+        date_from = quote(_days_ahead(20))
         response = client.get(
-            "/api/v1/appointments?date_from=2026-12-01T00:00:00%2B03:00",
+            f"/api/v1/appointments?date_from={date_from}",
             headers=session["headers"],
         )
         assert len(response.get_json()["data"]) == 1

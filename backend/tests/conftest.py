@@ -5,10 +5,16 @@ Every test runs against clinicflow_test, created and dropped per
 session. Nothing here can touch the development database.
 """
 
+import itertools
+from datetime import date, datetime, timedelta, timezone
+
 import pytest
 
 from app import create_app
 from app.extensions import db as _db
+from app.models.appointment import Appointment
+from app.models.enums import AppointmentStatus
+from app.models.follow_up import FollowUp
 
 
 @pytest.fixture(scope="session")
@@ -136,39 +142,115 @@ def make_patient(client):
     return _make
 
 
-@pytest.fixture
-def make_appointment(client):
-    """Schedule an appointment in the clinic owning the given headers."""
+def _direct_update(app, model, record_id, **values):
+    """
+    Write straight to the database, bypassing the API's business rules.
 
-    def _make(session, patient_id, scheduled_at="2026-12-01T10:00:00+03:00", **fields):
+    Only for building test state the API rightly refuses to create, such
+    as a follow-up that is already overdue or a visit that happened
+    yesterday. The session is removed afterwards so no transaction is
+    left open (see the app fixture).
+    """
+    with app.app_context():
+        _db.session.execute(
+            _db.update(model).where(model.id == record_id).values(**values)
+        )
+        _db.session.commit()
+        _db.session.remove()
+
+
+# Distinct default times, so appointments a test creates for one patient
+# never trip the double-booking rule unless the test intends it.
+_appointment_slots = itertools.count()
+
+
+@pytest.fixture
+def make_appointment(app, client):
+    """
+    Create an appointment in the clinic owning the given headers.
+
+    With no time given, books a free slot a few days ahead. A time in the
+    past, or a status of completed / no-show / cancelled, is test state
+    the booking rules forbid creating directly, so the appointment is
+    booked in the future through the API and then moved into that state
+    in the database.
+    """
+
+    def _make(session, patient_id, scheduled_at=None, **fields):
+        now = datetime.now(timezone.utc)
+        slot = next(_appointment_slots)
+        if scheduled_at is None:
+            scheduled_at = (now + timedelta(days=3, hours=2 * slot)).isoformat()
+
+        target_time = datetime.fromisoformat(scheduled_at)
+        target_status = fields.pop("status", None)
+        bookable = target_time > now and target_status in (None, "scheduled", "confirmed")
+
         response = client.post(
             "/api/v1/appointments",
             headers=session["headers"],
-            json={"patient_id": patient_id, "scheduled_at": scheduled_at, **fields},
+            json={
+                "patient_id": patient_id,
+                "scheduled_at": (
+                    scheduled_at if bookable
+                    else (now + timedelta(days=400, hours=slot)).isoformat()
+                ),
+                **({"status": target_status} if bookable and target_status else {}),
+                **fields,
+            },
         )
         assert response.status_code == 201, response.get_json()
-        return response.get_json()["data"]
+        appointment = response.get_json()["data"]
+
+        if not bookable:
+            values = {"scheduled_at": target_time}
+            if target_status:
+                values["status"] = AppointmentStatus(target_status)
+            _direct_update(app, Appointment, appointment["id"], **values)
+            appointment = client.get(
+                f"/api/v1/appointments/{appointment['id']}", headers=session["headers"]
+            ).get_json()["data"]
+
+        return appointment
 
     return _make
 
 
 @pytest.fixture
-def make_follow_up(client):
-    """Create a follow-up in the clinic owning the given headers."""
+def make_follow_up(app, client):
+    """
+    Create a follow-up in the clinic owning the given headers.
+
+    A past date (an already-overdue follow-up) cannot be created through
+    the API, so it is created for today and then backdated directly.
+    """
 
     def _make(session, patient_id, follow_up_date, reason="Review results", **fields):
+        target = date.fromisoformat(follow_up_date)
+        in_past = target < date.today()
+
         response = client.post(
             "/api/v1/follow-ups",
             headers=session["headers"],
             json={
                 "patient_id": patient_id,
-                "follow_up_date": follow_up_date,
+                "follow_up_date": date.today().isoformat() if in_past else follow_up_date,
                 "reason": reason,
                 **fields,
             },
         )
         assert response.status_code == 201, response.get_json()
-        return response.get_json()["data"]
+        follow_up = response.get_json()["data"]
+
+        if in_past:
+            _direct_update(app, FollowUp, follow_up["id"], follow_up_date=target)
+            # There is no single-follow-up endpoint; read it back via the patient.
+            listed = client.get(
+                f"/api/v1/patients/{patient_id}/follow-ups", headers=session["headers"]
+            ).get_json()["data"]
+            follow_up = next(f for f in listed if f["id"] == follow_up["id"])
+
+        return follow_up
 
     return _make
 

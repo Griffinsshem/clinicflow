@@ -1,6 +1,15 @@
 """Follow-up CRUD, derived overdue status, grouping, and completion."""
 
+from datetime import datetime, timedelta, timezone
+
 import pytest
+
+
+def _days_ahead(days: int) -> str:
+    """An ISO timestamp N days from now, so tests never age into the past."""
+    when = datetime.now(timezone(timedelta(hours=3))) + timedelta(days=days)
+    return when.replace(second=0, microsecond=0).isoformat()
+
 
 
 class TestFollowUpCrud:
@@ -194,7 +203,7 @@ class TestCompletionWorkflow:
         response = client.post(
             f"/api/v1/follow-ups/{follow_up['id']}/complete",
             headers=session["headers"],
-            json={"scheduled_at": "2027-01-15T09:30:00+03:00", "notes": "Six-week review"},
+            json={"scheduled_at": _days_ahead(30), "notes": "Six-week review"},
         )
         assert response.status_code == 200
         data = response.get_json()["data"]
@@ -237,6 +246,6 @@ class TestCompletionWorkflow:
         response = client.post(
             f"/api/v1/follow-ups/{follow_up['id']}/complete",
             headers=session["headers"],
-            json={"scheduled_at": "2027-01-15T09:30:00"},
+            json={"scheduled_at": _days_ahead(30)[:19]},
         )
         assert response.status_code == 422
