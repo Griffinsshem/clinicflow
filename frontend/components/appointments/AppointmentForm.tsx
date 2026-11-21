@@ -5,6 +5,12 @@ import { useState } from "react";
 import { Button } from "@/components/ui/Button";
 import { Field } from "@/components/ui/Field";
 import { ApiError, api } from "@/lib/client";
+import { humanise } from "@/lib/format";
+import {
+  isLocked,
+  minBookingValue,
+  toLocalDateTimeValue,
+} from "@/lib/scheduling";
 import type { Appointment, Patient } from "@/types/api";
 
 
@@ -17,12 +23,7 @@ interface AppointmentFormProps {
 }
 
 function toLocalInputValue(iso?: string): string {
-  const date = iso ? new Date(iso) : nextSensibleSlot();
-  const pad = (n: number) => String(n).padStart(2, "0");
-  return (
-    `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}` +
-    `T${pad(date.getHours())}:${pad(date.getMinutes())}`
-  );
+  return toLocalDateTimeValue(iso ? new Date(iso) : nextSensibleSlot());
 }
 
 function nextSensibleSlot(): Date {
@@ -52,6 +53,12 @@ export function AppointmentForm({
   const [saving, setSaving] = useState(false);
 
   const isEdit = Boolean(appointment);
+  // Completed, cancelled and no-show appointments keep their date and
+  // type (the API enforces this); only the notes can still change.
+  const locked = appointment ? isLocked(appointment) : false;
+  const lockedHint = appointment
+    ? `${humanise(appointment.status)} appointments keep their date and type.`
+    : undefined;
 
   async function handleSubmit(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -60,16 +67,26 @@ export function AppointmentForm({
     setMessage(null);
 
     const form = new FormData(event.currentTarget);
-    const scheduledAt = toIsoWithOffset(String(form.get("scheduled_at")));
+    const scheduledAt = locked
+      ? null
+      : toIsoWithOffset(String(form.get("scheduled_at")));
 
     try {
       let result;
       if (appointment) {
-        result = await api.patch<Appointment>(`/appointments/${appointment.id}`, {
-          scheduled_at: scheduledAt,
-          appointment_type: form.get("appointment_type"),
-          notes: String(form.get("notes") ?? "").trim() || null,
-        });
+        const notes = String(form.get("notes") ?? "").trim() || null;
+        // Disabled inputs are not submitted, so a locked appointment
+        // sends its notes only.
+        result = await api.patch<Appointment>(
+          `/appointments/${appointment.id}`,
+          locked
+            ? { notes }
+            : {
+                scheduled_at: scheduledAt,
+                appointment_type: form.get("appointment_type"),
+                notes,
+              },
+        );
       } else {
         result = await api.post<Appointment>("/appointments", {
           patient_id: Number(patient?.id ?? form.get("patient_id")),
@@ -124,13 +141,22 @@ export function AppointmentForm({
         </Field>
       ) : null}
 
-      <Field label="Date and time" error={errors.scheduled_at} required>
+      <Field
+        label="Date and time"
+        error={errors.scheduled_at}
+        hint={locked ? lockedHint : undefined}
+        required
+      >
         {(props) => (
           <input
             {...props}
             name="scheduled_at"
             type="datetime-local"
             required
+            disabled={locked}
+            // Only when booking: an existing appointment may already be in
+            // the past, and a min would block saving its notes.
+            min={isEdit ? undefined : minBookingValue()}
             defaultValue={toLocalInputValue(appointment?.scheduled_at)}
           />
         )}
@@ -141,6 +167,7 @@ export function AppointmentForm({
           <select
             {...props}
             name="appointment_type"
+            disabled={locked}
             defaultValue={appointment?.appointment_type ?? "consultation"}
           >
             <option value="consultation">Consultation</option>

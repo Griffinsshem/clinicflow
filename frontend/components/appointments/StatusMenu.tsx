@@ -6,6 +6,7 @@ import { MoreHorizontal } from "lucide-react";
 import { Button } from "@/components/ui/Button";
 import { ApiError, api } from "@/lib/client";
 import { humanise } from "@/lib/format";
+import { statusAllowedNow } from "@/lib/scheduling";
 import { cx } from "@/lib/utils";
 import { useToast } from "@/providers/ToastProvider";
 import type { Appointment, AppointmentStatus } from "@/types/api";
@@ -40,7 +41,18 @@ export function StatusMenu({
   const [menuOpen, setMenuOpen] = useState(false);
   const containerRef = useRef<HTMLDivElement>(null);
 
-  const { primary, others } = TRANSITIONS[appointment.status];
+  // Completed and no-show mean the visit has happened, so they are not
+  // offered for a future visit; the API would refuse them anyway.
+  const transitions = TRANSITIONS[appointment.status];
+  const available = [transitions.primary, ...transitions.others].filter(
+    (status): status is AppointmentStatus =>
+      status !== null && statusAllowedNow(appointment, status),
+  );
+  const primary =
+    transitions.primary && available.includes(transitions.primary)
+      ? transitions.primary
+      : (available[0] ?? null);
+  const others = available.filter((status) => status !== primary);
 
   useEffect(() => {
     if (!menuOpen) return;

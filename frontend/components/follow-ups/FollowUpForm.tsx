@@ -5,12 +5,14 @@ import { useState } from "react";
 import { Button } from "@/components/ui/Button";
 import { Field } from "@/components/ui/Field";
 import { ApiError, api } from "@/lib/client";
+import { todayValue } from "@/lib/scheduling";
 import type { FollowUp, Patient } from "@/types/api";
 
 function defaultDate(): string {
   const date = new Date();
   date.setDate(date.getDate() + 14);
-  return date.toISOString().slice(0, 10);
+  // Local date: toISOString() is UTC and can be a day off late at night.
+  return todayValue(date);
 }
 
 export function FollowUpForm({
@@ -76,6 +78,7 @@ export function FollowUpForm({
             name="follow_up_date"
             type="date"
             required
+            min={todayValue()}
             defaultValue={defaultDate()}
           />
         )}

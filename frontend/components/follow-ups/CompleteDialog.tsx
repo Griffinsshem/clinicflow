@@ -6,6 +6,7 @@ import { Button } from "@/components/ui/Button";
 import { Field } from "@/components/ui/Field";
 import { Modal } from "@/components/ui/Modal";
 import { ApiError, api } from "@/lib/client";
+import { minBookingValue, toLocalDateTimeValue } from "@/lib/scheduling";
 import type { FollowUp } from "@/types/api";
 
 
@@ -13,11 +14,7 @@ function defaultSlot(): string {
   const date = new Date();
   date.setDate(date.getDate() + 14);
   date.setHours(9, 0, 0, 0);
-  const pad = (n: number) => String(n).padStart(2, "0");
-  return (
-    `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}` +
-    `T${pad(date.getHours())}:${pad(date.getMinutes())}`
-  );
+  return toLocalDateTimeValue(date);
 }
 
 function toIsoWithOffset(localValue: string): string {
@@ -119,6 +116,7 @@ export function CompleteDialog({
                   name="scheduled_at"
                   type="datetime-local"
                   required
+                  min={minBookingValue()}
                   defaultValue={defaultSlot()}
                 />
               )}
