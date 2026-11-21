@@ -1,19 +1,9 @@
 import { NextResponse } from "next/server";
 
 import { callBackend } from "@/lib/backend";
+import { clientIp } from "@/lib/client-ip";
+import { MUTATING_METHODS, isCrossSiteMutation } from "@/lib/origin";
 import { clearSessionCookie, getSessionToken } from "@/lib/session";
-
-
-const MUTATING_METHODS = new Set(["POST", "PATCH", "PUT", "DELETE"]);
-
-
-function isSameOrigin(request: Request): boolean {
-  const origin = request.headers.get("origin");
-  if (!origin) {
-    return false;
-  }
-  return origin === new URL(request.url).origin;
-}
 
 async function handle(
   request: Request,
@@ -21,7 +11,9 @@ async function handle(
 ) {
   const { path } = await context.params;
 
-  if (MUTATING_METHODS.has(request.method) && !isSameOrigin(request)) {
+  // Also enforced for all /api routes in proxy.ts; kept here as a second
+  // layer because this route forwards the session token.
+  if (isCrossSiteMutation(request)) {
     return NextResponse.json(
       { success: false, message: "Request blocked." },
       { status: 403 },
@@ -47,6 +39,7 @@ async function handle(
     target,
     { method: request.method, body: body || undefined },
     token,
+    clientIp(request),
   );
 
   const response = NextResponse.json(result.body, { status: result.status });

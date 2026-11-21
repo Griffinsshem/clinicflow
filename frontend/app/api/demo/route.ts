@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 
 import { callBackend } from "@/lib/backend";
+import { clientIp } from "@/lib/client-ip";
 import { setSessionCookie } from "@/lib/session";
 import type { AuthPayload } from "@/types/api";
 
@@ -12,6 +13,8 @@ export async function POST(request: Request) {
   const { status, body } = await callBackend<AuthPayload>(
     `/demo?tz_offset=${encodeURIComponent(offset)}`,
     { method: "POST" },
+    null,
+    clientIp(request),
   );
 
   if (!body.success) {

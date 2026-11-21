@@ -11,6 +11,14 @@ if (!API_URL) {
 
 const REQUEST_TIMEOUT_MS = 60_000;
 
+/**
+ * Shared with the Flask API. Sent with the visitor's IP so the API can
+ * trust that header for rate limiting; a request without the secret is
+ * attributed to its connecting address instead. Optional locally, where
+ * there is only ever one visitor.
+ */
+const PROXY_SHARED_SECRET = process.env.PROXY_SHARED_SECRET;
+
 export interface BackendResult<T> {
   status: number;
   body: ApiResponse<T>;
@@ -20,11 +28,16 @@ export async function callBackend<T>(
   path: string,
   init: RequestInit = {},
   token?: string | null,
+  clientIp?: string | null,
 ): Promise<BackendResult<T>> {
   const headers = new Headers(init.headers);
   headers.set("Content-Type", "application/json");
   if (token) {
     headers.set("Authorization", `Bearer ${token}`);
+  }
+  if (clientIp && PROXY_SHARED_SECRET) {
+    headers.set("X-Client-IP", clientIp);
+    headers.set("X-Proxy-Secret", PROXY_SHARED_SECRET);
   }
 
   try {
