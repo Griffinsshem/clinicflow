@@ -7,6 +7,7 @@ from app.extensions import db
 from app.models.appointment import Appointment
 from app.models.enums import AppointmentStatus, AppointmentType
 from app.models.patient import Patient
+from app.services import scheduling_rules as rules
 from app.utils.errors import ApiError
 from app.utils.pagination import paginate
 from app.utils.scoping import current_clinic_id, get_scoped_or_404, scoped_query
@@ -66,6 +67,8 @@ def get_appointment(appointment_id: int) -> Appointment:
 
 def create_appointment(data: dict) -> Appointment:
     _verify_patient(data["patient_id"])
+    rules.check_booking_time(data["scheduled_at"], data["status"])
+    rules.check_double_booking(data["patient_id"], data["scheduled_at"], data["status"])
 
     appointment = Appointment(clinic_id=current_clinic_id(), **data)
     db.session.add(appointment)
@@ -77,7 +80,8 @@ def update_appointment(appointment_id: int, changes: dict) -> Appointment:
     appointment = get_scoped_or_404(Appointment, appointment_id, "Appointment")
 
     new_status = changes.get("status")
-    if new_status is not None and new_status != appointment.status:
+    status_changing = new_status is not None and new_status != appointment.status
+    if status_changing:
         allowed = ALLOWED_TRANSITIONS[appointment.status]
         if new_status not in allowed:
             raise ApiError(
@@ -86,6 +90,32 @@ def update_appointment(appointment_id: int, changes: dict) -> Appointment:
                 422,
                 {"status": "This status change is not allowed."},
             )
+
+    rules.check_locked_fields(appointment, changes)
+
+    # The edit form re-sends the time on every save; only a real change counts.
+    new_time = changes.get("scheduled_at")
+    time_changing = new_time is not None and not rules.same_minute(
+        new_time, appointment.scheduled_at
+    )
+    if not time_changing:
+        changes.pop("scheduled_at", None)
+
+    resulting_status = new_status if status_changing else appointment.status
+    resulting_time = new_time if time_changing else appointment.scheduled_at
+
+    if time_changing:
+        rules.check_booking_time(resulting_time, resulting_status)
+    elif status_changing:
+        rules.check_status_time(appointment, resulting_status)
+
+    if time_changing or (
+        status_changing and resulting_status in rules.ACTIVE_STATUSES
+    ):
+        rules.check_double_booking(
+            appointment.patient_id, resulting_time, resulting_status,
+            exclude_id=appointment.id,
+        )
 
     for field, value in changes.items():
         setattr(appointment, field, value)

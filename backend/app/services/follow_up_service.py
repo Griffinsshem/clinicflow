@@ -5,9 +5,10 @@ from sqlalchemy.orm import selectinload
 
 from app.extensions import db
 from app.models.appointment import Appointment
-from app.models.enums import FollowUpStatus
+from app.models.enums import AppointmentStatus, FollowUpStatus
 from app.models.follow_up import FollowUp
 from app.models.patient import Patient
+from app.services import scheduling_rules as rules
 from app.utils.errors import ApiError
 from app.utils.pagination import paginate
 from app.utils.scoping import current_clinic_id, get_scoped_or_404, scoped_query
@@ -80,7 +81,12 @@ def get_follow_up(follow_up_id: int) -> FollowUp:
 def create_follow_up(data: dict) -> FollowUp:
     get_scoped_or_404(Patient, data["patient_id"], "Patient")
     if data.get("appointment_id") is not None:
-        get_scoped_or_404(Appointment, data["appointment_id"], "Appointment")
+        appointment = get_scoped_or_404(Appointment, data["appointment_id"], "Appointment")
+        if appointment.patient_id != data["patient_id"]:
+            message = "That appointment belongs to a different patient."
+            raise ApiError(message, 422, {"appointment_id": message})
+
+    rules.check_follow_up_date(data["follow_up_date"])
 
     follow_up = FollowUp(clinic_id=current_clinic_id(), **data)
     db.session.add(follow_up)
@@ -90,6 +96,24 @@ def create_follow_up(data: dict) -> FollowUp:
 
 def update_follow_up(follow_up_id: int, changes: dict) -> FollowUp:
     follow_up = get_scoped_or_404(FollowUp, follow_up_id, "Follow-up")
+
+    # Status moves only through complete_follow_up(), which can also book
+    # the next visit. A completed follow-up is history and is not reopened.
+    new_status = changes.pop("status", None)
+    if new_status is not None and new_status != follow_up.status:
+        if follow_up.status == FollowUpStatus.COMPLETED:
+            message = "A completed follow-up cannot be reopened. Create a new one instead."
+        else:
+            message = "Use Complete to finish a follow-up."
+        raise ApiError(message, 422, {"status": message})
+
+    new_date = changes.get("follow_up_date")
+    if new_date is not None and new_date != follow_up.follow_up_date:
+        if follow_up.status == FollowUpStatus.COMPLETED:
+            message = "This follow-up is completed, so its date can no longer change."
+            raise ApiError(message, 422, {"follow_up_date": message})
+        rules.check_follow_up_date(new_date)
+
     for field, value in changes.items():
         setattr(follow_up, field, value)
     db.session.commit()
@@ -104,10 +128,24 @@ def complete_follow_up(
     if follow_up.status == FollowUpStatus.COMPLETED:
         raise ApiError("This follow-up is already completed.", 409)
 
+    booking_next = bool(next_appointment and next_appointment.get("scheduled_at"))
+
+    # Validate the next visit before changing anything, so a rejected
+    # booking leaves the follow-up exactly as it was.
+    if booking_next:
+        rules.check_booking_time(
+            next_appointment["scheduled_at"], AppointmentStatus.SCHEDULED
+        )
+        rules.check_double_booking(
+            follow_up.patient_id,
+            next_appointment["scheduled_at"],
+            AppointmentStatus.SCHEDULED,
+        )
+
     follow_up.status = FollowUpStatus.COMPLETED
 
     appointment = None
-    if next_appointment and next_appointment.get("scheduled_at"):
+    if booking_next:
         appointment = Appointment(
             clinic_id=current_clinic_id(),
             patient_id=follow_up.patient_id,
