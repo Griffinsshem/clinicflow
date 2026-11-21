@@ -33,7 +33,7 @@ Every record belongs to a clinic, and no clinic can see another's data — enfor
 **Backend** — Flask, SQLAlchemy 2, Alembic, Pydantic v2, PostgreSQL 16  
 **Deployment** — Vercel (frontend), Render (API), Neon (database)
 
-117 backend tests, 15 of them covering cross-tenant isolation specifically.
+156 backend tests, 15 of them covering cross-tenant isolation specifically.
 
 ---
 
@@ -65,7 +65,7 @@ backend/
     schemas/     Pydantic request validation
     utils/       Scoping, decorators, response envelope
   migrations/    Alembic revisions
-  tests/         117 tests
+  tests/         156 tests
 
 frontend/
   app/
@@ -136,6 +136,22 @@ Because the browser never calls Flask, every request Flask sees comes from one o
 So the Next.js server forwards the visitor's real IP in `X-Client-IP`, together with a shared secret in `X-Proxy-Secret`. The API is publicly reachable, so anyone can send an `X-Client-IP` header; the secret is what makes it trustworthy. Without the correct secret, a request is attributed to its connecting address exactly as before, so forging the header cannot buy a fresh bucket. The secret is compared in constant time, the forwarded value must parse as an IP address, and production refuses to boot without a strong secret. See [`backend/app/utils/client_ip.py`](backend/app/utils/client_ip.py).
 
 Login also has a second, per-account limit: 10 *failed* attempts per email per 15 minutes, across all IPs. The per-IP limit stops one machine hammering the endpoint; the per-account limit stops password guessing spread over many machines. Successful sign-ins do not count, so staff who sign in often are never locked out by it.
+
+### Scheduling rules: a record has to make sense
+
+Validating the *shape* of input (types, lengths, a timezone offset) is not enough: a correctly formatted appointment can still be nonsense. The demo showed it. A completed visit could be moved to 2030, a completed follow-up reopened, a follow-up linked to a different patient's appointment, a follow-up dated 2020, an appointment dated 2001, and the same patient booked twice at the same moment. Each one quietly corrupts the history a clinic relies on.
+
+These rules live in one module, [`scheduling_rules.py`](backend/app/services/scheduling_rules.py), and every path that books or changes something calls them: creating and editing appointments, editing follow-ups, and completing a follow-up while booking the next visit.
+
+| Rule | Why |
+|---|---|
+| Completed, cancelled and no-show appointments keep their date, time and type. Notes stay editable. A no-show can be rebooked. | What happened is history. Staff still add visit notes afterwards. |
+| A follow-up's status changes only through **Complete**. A completed follow-up's date is fixed and it cannot be reopened. | Completing can also book the next visit in the same transaction; a PATCH that flips the status would skip that. |
+| A follow-up can only link to an appointment of the same patient. | Otherwise the clinic's own records contradict each other. |
+| New bookings must start no earlier than an hour ago (walk-ins) and no more than two years ahead. A visit can't be marked completed or no-show before it has happened. Past visits can still be recorded as completed. Follow-up dates run from today to two years out. | Catches typos (2062 for 2026) and states that can't be true, such as a follow-up overdue the moment it is created. |
+| The same patient can't have two active appointments within 30 minutes. | A double booking for one person is always a mistake. Different patients at the same time are allowed, because a clinic may have several practitioners and ClinicFlow does not model practitioners or rooms. |
+
+The edit form re-sends the date and type on every save, so the rules compare values (to the minute) rather than reacting to a field merely being present. Saving only a note on a completed visit works. The UI mirrors the rules in [`frontend/lib/scheduling.ts`](frontend/lib/scheduling.ts): date pickers have a minimum, and the status menu doesn't offer Completed or No-show for a visit still in the future.
 
 ### Aggregate-only dashboard queries
 
@@ -212,7 +228,7 @@ npm run dev                  # http://localhost:3000
 ### Tests
 
 ```bash
-cd backend && pytest -q                       # 117 tests
+cd backend && pytest -q                       # 156 tests
 pytest tests/test_clinic_isolation.py -v      # the isolation suite
 ```
 
@@ -336,6 +352,8 @@ Named rather than hidden. Each is a considered tradeoff for a portfolio deployme
 **No role enforcement beyond the model.** `admin` and `staff` exist and an `admin_required` decorator is implemented, but no endpoint currently restricts by role — there is no user management feature yet to restrict.
 
 **Patient selector loads 100 records.** The appointment scheduling dropdown fetches the first page of patients. Adequate for a pilot-scale clinic; a larger practice needs a searchable combobox querying as you type.
+
+**Clinic-wide double booking is not prevented.** The same patient can't be double-booked, but two different patients can share a time, because without practitioners, rooms or appointment durations the system can't know whether that's a clash. Adding a practitioner to appointments would make a per-practitioner rule possible. The per-patient check is also a read-then-write in the application; two simultaneous requests could both pass it. A PostgreSQL exclusion constraint would close that, at the cost of a fixed slot length.
 
 **Frontend tests are absent.** Backend coverage is thorough; the frontend is verified manually. Component and flow tests would be the next addition.
 

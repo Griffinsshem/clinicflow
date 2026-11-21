@@ -3,6 +3,50 @@
 Notable changes to ClinicFlow, newest first. Each entry says what changed,
 why, and anything that has to be done when deploying it.
 
+## 2026-11-21 — Data integrity rules for appointments and follow-ups
+
+### Fixed
+
+Bugs reproduced on the live demo. Each request below was accepted
+before this change:
+
+| Bug | Now |
+|---|---|
+| A completed appointment could be rescheduled (moved to 2030) and its type changed | 422. Completed, cancelled and no-show appointments keep their date, time and type. Notes stay editable. |
+| A completed follow-up could be reopened with `PATCH {"status": "upcoming"}` | 422. Status changes only through Complete; a completed follow-up is not reopened and its date is fixed. |
+| A follow-up could link to another patient's appointment | 422 on `appointment_id`. |
+| A follow-up dated 2020 and an appointment dated 2001 were accepted | 422. See the date rules below. |
+| The same patient could be booked twice in the same slot | 409 when the same patient has another active appointment within 30 minutes. |
+
+Date rules (`backend/app/services/scheduling_rules.py`):
+- New bookings can start up to 1 hour ago (walk-ins) and up to 2 years ahead.
+- Past visits can still be recorded as completed (back-entry), up to 5 years back.
+- A visit can't be marked completed more than 1 hour before it starts, or a no-show before it starts.
+- Follow-up dates run from today (with one day of tolerance for clinics behind UTC) to 2 years ahead.
+- Completing a follow-up and booking the next visit applies the same rules, and a rejected booking now leaves the follow-up untouched (it is checked before anything changes).
+
+### Changed (frontend)
+
+- New `frontend/lib/scheduling.ts` mirrors the rules so the UI doesn't offer actions the API refuses.
+- The status menu no longer offers Completed or No-show for a visit still in the future.
+- Date pickers for booking, the next visit and follow-ups have a minimum date. The follow-up default date now uses the local date rather than UTC.
+- The appointment form locks date and type for finished appointments and sends only the notes. The UI doesn't currently open this form for editing, so this takes effect once editing is added.
+
+### Tests
+
+- `backend/tests/test_scheduling_rules.py`: 39 tests, one group per rule, including each reproduced bug. 24 of them fail against the previous code; the other 15 check that legitimate actions still work.
+- Existing tests used fixed dates (`2026-11-01`, `2026-12-01`) that were becoming past dates. Fixtures now use relative dates and build past state (an overdue follow-up, yesterday's visit) directly in the database, because the API now rightly refuses to create it.
+- 156 backend tests in total, all passing.
+- Verified end to end against a production build: all five original bugs are refused with clear messages, and the status menu offers Completed and No-show only for visits that have happened.
+
+### Not changed
+
+- Different patients at the same time are still allowed (a clinic can have several practitioners). See README, Known limitations.
+
+### Deploying this change
+
+Nothing extra: no migrations and no new environment variables.
+
 ## 2026-11-21 — Per-visitor rate limiting and CSRF protection
 
 ### Security
