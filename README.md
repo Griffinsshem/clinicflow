@@ -33,7 +33,7 @@ Every record belongs to a clinic, and no clinic can see another's data — enfor
 **Backend** — Flask, SQLAlchemy 2, Alembic, Pydantic v2, PostgreSQL 16  
 **Deployment** — Vercel (frontend), Render (API), Neon (database)
 
-156 backend tests, 15 of them covering cross-tenant isolation specifically.
+165 backend tests, 15 of them covering cross-tenant isolation specifically.
 
 ---
 
@@ -65,7 +65,7 @@ backend/
     schemas/     Pydantic request validation
     utils/       Scoping, decorators, response envelope
   migrations/    Alembic revisions
-  tests/         156 tests
+  tests/         165 tests
 
 frontend/
   app/
@@ -128,6 +128,24 @@ ClinicFlow puts the token in an **httpOnly cookie** set by a Next.js route handl
 That buys two things. An XSS bug cannot exfiltrate the session. And `proxy.ts` can see the cookie, so route protection happens at the edge before a page renders — no flash of a dashboard shell before a client-side redirect.
 
 The cost is a proxy layer and CSRF consideration. The cookie is `sameSite=lax`, which stops the browser sending it on cross-site writes. That protects authenticated calls, but not the routes that *set* the cookie: another site could auto-submit a hidden form to `/api/auth/login` and sign a visitor into an attacker's account, start a demo session for them, or sign them out. So `proxy.ts` refuses every state-changing request to `/api/*` whose `Origin` does not match the host the browser addressed, including a missing or `null` Origin. It is checked once, centrally, so a route added later cannot forget it, and the data proxy repeats the check as a second layer. See [`frontend/lib/origin.ts`](frontend/lib/origin.ts).
+
+### Security headers and a nonce-based CSP
+
+ClinicFlow shows patient records, so a script that slipped into a page (from a compromised npm package, or a field that one day escaped React's escaping) could read them and send them anywhere. The Content-Security-Policy is built to make that fail:
+
+- **Scripts need a per-request nonce.** `proxy.ts` generates a fresh random nonce for every page request and puts it in the policy; Next.js stamps it onto its own scripts while rendering. A script without the nonce does not run. There is no `'unsafe-inline'` for scripts, and no `'unsafe-eval'` outside development.
+- **The page can only talk to its own origin** (`connect-src 'self'`). This is where the [proxy design](#why-the-token-is-not-in-localstorage) pays off a second time: the browser never calls the Flask API, so nothing else needs allowing, and stolen data has nowhere to go.
+- **No framing, no plugins, no foreign forms** (`frame-ancestors 'none'`, `object-src 'none'`, `form-action 'self'`).
+
+The cost: a nonce must be added while the page renders, so every page is now rendered per request (`await connection()` in the root layout) rather than served pre-built. The app pages were already dynamic, since they check the user's session, so in practice this only affects the landing and auth pages. That is the trade-off Next.js's own CSP guide recommends for applications handling sensitive data.
+
+One allowance: inline style *attributes* (`style-src-attr 'unsafe-inline'`), because the dashboard chart sizes its bars with them. A style attribute cannot run code. `<style>` elements still need the nonce.
+
+Alongside the CSP, every response carries `Strict-Transport-Security`, `X-Content-Type-Options: nosniff`, `X-Frame-Options: DENY`, `Referrer-Policy: strict-origin-when-cross-origin` (other sites never see a path like `/patients/42`), a `Permissions-Policy` that denies camera, microphone, location and similar features, and `Cross-Origin-Opener-Policy: same-origin`. `/api/*` responses are `Cache-Control: no-store`.
+
+The Flask API adds its own on every response, errors included: `Cache-Control: no-store` (patient data is never kept by a browser, proxy or CDN), `nosniff`, `Content-Security-Policy: default-src 'none'; frame-ancestors 'none'`, `X-Frame-Options: DENY` and `Referrer-Policy: no-referrer`. See [`frontend/lib/security-headers.ts`](frontend/lib/security-headers.ts) and [`backend/app/utils/security_headers.py`](backend/app/utils/security_headers.py).
+
+To check a deployment: `node frontend/scripts/check-security-headers.mjs https://your-site.example`. It checks every header on the landing page, the login page, a 404 and an API route, confirms the nonce changes per request, and exits non-zero if anything is missing.
 
 ### Rate limiting behind a proxy
 
@@ -228,7 +246,7 @@ npm run dev                  # http://localhost:3000
 ### Tests
 
 ```bash
-cd backend && pytest -q                       # 156 tests
+cd backend && pytest -q                       # 165 tests
 pytest tests/test_clinic_isolation.py -v      # the isolation suite
 ```
 
@@ -321,6 +339,7 @@ Discriminated on `success`, so a narrowed check in TypeScript gives either `data
 | SQL | SQLAlchemy throughout. The one raw statement is a parameterless `SELECT 1` in the health check. |
 | CORS | Explicit origin allowlist from the environment. Production refuses to boot with a wildcard. |
 | Rate limiting | Per visitor IP: 5 logins/minute, 3 registrations/hour, 3 demos/hour. Per account: 10 failed logins per 15 minutes. The visitor IP is forwarded by the frontend and trusted only with the shared proxy secret. |
+| Security headers | Nonce-based CSP on every page (no inline or eval scripts, same-origin connections only, no framing), HSTS, `nosniff`, `X-Frame-Options`, `Referrer-Policy`, `Permissions-Policy`. API responses are `no-store`. Checked by `frontend/scripts/check-security-headers.mjs`. |
 | CSRF | Every state-changing `/api/*` request must carry an `Origin` matching the site, on top of the `sameSite=lax` cookie. Blocks login CSRF, forced demo sessions and forced sign-out. |
 | Errors | Full traceback to logs, generic message to the client. No stack traces, SQL, or paths in responses. |
 | Logging | User and clinic IDs only. Never passwords, tokens, or patient identifiers. |
@@ -354,6 +373,8 @@ Named rather than hidden. Each is a considered tradeoff for a portfolio deployme
 **Patient selector loads 100 records.** The appointment scheduling dropdown fetches the first page of patients. Adequate for a pilot-scale clinic; a larger practice needs a searchable combobox querying as you type.
 
 **Clinic-wide double booking is not prevented.** The same patient can't be double-booked, but two different patients can share a time, because without practitioners, rooms or appointment durations the system can't know whether that's a clash. Adding a practitioner to appointments would make a per-practitioner rule possible. The per-patient check is also a read-then-write in the application; two simultaneous requests could both pass it. A PostgreSQL exclusion constraint would close that, at the cost of a fixed slot length.
+
+**Vercel preview deployments and the CSP.** Vercel's feedback toolbar on preview deployments loads scripts from Vercel's own domain, which the CSP blocks, so the toolbar won't appear on previews. Production is unaffected. Allow `https://vercel.live` in `script-src`, `connect-src` and `frame-src` if the toolbar is wanted.
 
 **Frontend tests are absent.** Backend coverage is thorough; the frontend is verified manually. Component and flow tests would be the next addition.
 

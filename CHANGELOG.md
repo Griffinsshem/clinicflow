@@ -3,6 +3,73 @@
 Notable changes to ClinicFlow, newest first. Each entry says what changed,
 why, and anything that has to be done when deploying it.
 
+## 2026-11-25 — Security headers and Content-Security-Policy
+
+### Security
+
+Neither the frontend nor the API sent any security headers, so pages
+could be framed by another site (clickjacking), any injected script
+would run, and API responses carrying patient data could be cached.
+
+**Frontend (every page):**
+- A strict **Content-Security-Policy** with a fresh nonce per request
+  (`frontend/proxy.ts`, `frontend/lib/security-headers.ts`). Only scripts
+  carrying the nonce run; no `'unsafe-inline'` scripts and no
+  `'unsafe-eval'` in production. The page may only connect to its own
+  origin, which is all it needs because the browser never calls the
+  Flask API directly. Framing, plugins and foreign form targets are
+  blocked. Inline style attributes are allowed, for the dashboard chart.
+- `Strict-Transport-Security`, `X-Content-Type-Options: nosniff`,
+  `X-Frame-Options: DENY`, `Referrer-Policy: strict-origin-when-cross-origin`,
+  `Permissions-Policy` (camera, microphone, location and similar denied)
+  and `Cross-Origin-Opener-Policy: same-origin`, set in `next.config.ts`.
+- `Cache-Control: no-store` on all `/api/*` routes.
+- The root layout now renders every page per request (`await connection()`),
+  because Next.js can only add the nonce while rendering. App pages were
+  already dynamic; the landing and auth pages are now too.
+- `proxy.ts` now runs on every page, not just protected ones, so every
+  page gets the policy. Built assets and files are skipped.
+
+**API (every response, errors included):** `Cache-Control: no-store`,
+`X-Content-Type-Options: nosniff`, `Content-Security-Policy: default-src
+'none'; frame-ancestors 'none'`, `X-Frame-Options: DENY`,
+`Referrer-Policy: no-referrer`, `Cross-Origin-Resource-Policy: same-site`
+(`backend/app/utils/security_headers.py`).
+
+### Added
+
+- `frontend/scripts/check-security-headers.mjs`: checks a running site's
+  headers (landing page, login, a 404 and an API route), confirms the
+  nonce changes per request, and exits non-zero on any problem. No
+  dependencies. Run it after each deploy:
+  `node frontend/scripts/check-security-headers.mjs https://clinicflow-mu-nine.vercel.app`
+
+### Tests
+
+- `backend/tests/test_security_headers.py`: 9 tests covering successful
+  responses, 401, 404, validation errors, another clinic's record and
+  CORS preflight. 8 fail without the change. 165 backend tests in total.
+- Frontend, against a production build and the real API: the header
+  script passes on every page. In Chrome, every page (landing, login,
+  register, 404, dashboard, patients, a patient, appointments,
+  follow-ups) loaded with zero CSP violations; the demo button, a modal
+  and sign-out work; the dashboard chart renders. Every `<script>` tag on
+  every page carries that request's nonce.
+- Not tested locally: the real Google fonts (the test environment can't
+  download them). `next/font` serves them from this origin, which the
+  policy allows; check the browser console once after deploying.
+
+### Not changed
+
+- Vercel's preview-deployment toolbar is blocked by the CSP. See README,
+  Known limitations.
+
+### Deploying this change
+
+Nothing extra: no migrations and no environment variables. After the
+deploy, run the header check script against the live site and open the
+browser console once to confirm there are no CSP errors.
+
 ## 2026-11-21 — Data integrity rules for appointments and follow-ups
 
 ### Fixed
