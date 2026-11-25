@@ -9,6 +9,7 @@ from app.config import BaseConfig, get_config
 from app.extensions import cors, db, jwt, limiter, migrate
 from app.utils.errors import ApiError
 from app.utils.responses import error_response
+from app.utils.security_headers import register_security_headers
 
 API_PREFIX = "/api/v1"
 
@@ -42,6 +43,7 @@ def create_app(config_name: str | None = None) -> Flask:
 
     _register_blueprints(app)
     _register_error_handlers(app)
+    register_security_headers(app)
 
     app.logger.info("ClinicFlow started in %s mode", app.config["ENV_NAME"])
     return app
