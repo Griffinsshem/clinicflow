@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import { connection } from "next/server";
 import { Public_Sans, Source_Serif_4 } from "next/font/google";
 
 import "./globals.css";
@@ -22,11 +23,17 @@ export const metadata: Metadata = {
   description: "Appointment and follow-up management for small clinics.",
 };
 
-export default function RootLayout({
+export default async function RootLayout({
   children,
 }: {
   children: React.ReactNode;
 }) {
+  // Render every page per request. The Content-Security-Policy carries a
+  // fresh nonce each time (proxy.ts), and Next.js can only stamp that
+  // nonce onto its scripts while rendering; a page built ahead of time
+  // would carry no nonce and its scripts would be blocked.
+  await connection();
+
   return (
     <html lang="en" className={`${publicSans.variable} ${sourceSerif.variable}`}>
       <body>{children}</body>
